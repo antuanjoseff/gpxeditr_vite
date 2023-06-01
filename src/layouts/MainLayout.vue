@@ -307,7 +307,7 @@ export default defineComponent({
     }
 
     const outGraphic = () => {
-      MAP.value.clearAnimatedPoint()
+      // MAP.value.clearAnimatedPoint()
     }
 
     const overGraphic = (data) => {

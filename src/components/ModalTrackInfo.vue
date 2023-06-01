@@ -101,7 +101,7 @@
             </div>
           </div>
         <q-card  v-if="info.distance" horizontal="true" class="flex column">
-          <q-card-section class="graph-wrapper">
+          <q-card-section class="graph-wrapper" @mouseleave="mouseOut">
             <div id="tooltip-header"></div>
             <line-chart
               height="250"
@@ -166,6 +166,11 @@ export default defineComponent({
       document.getElementById('tooltip-header').innerHTML = ''
     }
 
+    const mouseOut = (data) => {
+      console.log('out')
+      document.getElementById('slope-box').innerHTML = ''
+    }
+
     const cancelTrackProfile = () => {
       $store.commit('main/setTrackInfo', {})
       $store.commit('main/setActiveLayer', -1)
@@ -173,6 +178,7 @@ export default defineComponent({
 
     return {
       info,
+      mouseOut,
       slider,
       sliderValue,
       updateTolerance,

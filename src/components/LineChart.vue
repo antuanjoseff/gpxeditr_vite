@@ -1,4 +1,5 @@
 <template>
+  <div id="slope-box"></div>
   <div class="fit padding-canvas" v-if="elevationData">
     <canvas id="overlay" height="250" style="position:absolute;pointer-events:none;"></canvas>
     <line-chart
@@ -8,7 +9,6 @@
       :options="options"
       :plugins="plugins"
       :height="graphHeight" class="fit"
-      @mouseout="mouseOut"
     />
   </div>
 </template>
@@ -36,13 +36,13 @@ export default defineComponent({
     var canvas, overlay, chart
     var selectionContext, selectionRect
     var drag = false
+    var cleanRequired = false
 
     const graphSelectedRange = computed(() => {
       return $store.getters['main/graphSelectedRange']
     })
 
     const resizeHandler = () => {
-      console.log(startIndex, endIndex)
       drawRectangle(startIndex, endIndex)
     }
 
@@ -88,6 +88,8 @@ export default defineComponent({
 
       const clearGraphSelection = () => {
         $store.commit('main/segmentIsSelected', false)
+        drag = false
+        cleanRequired = false
         const rect = canvas.getBoundingClientRect();
         selectionContext.clearRect(0, 0, canvas.width, canvas.height);
         selectionContext.fillRect(0,
@@ -97,19 +99,30 @@ export default defineComponent({
       }
 
       canvas.addEventListener('pointerdown', evt => {
-
-        if (!drag) {
+        if (cleanRequired) {
           clearGraphSelection()
+          cleanRequired = false
+          return
         }
+        if (!drag) {
+          const points = chart.getElementsAtEventForMode(evt, 'index', {
+            intersect: false
+          })
+          startIndex = points[0].index;
+          const rect = canvas.getBoundingClientRect()
+          selectionRect.startX = evt.clientX - rect.left
+          selectionRect.startY = chart.chartArea.top
+          drag = true
+        } else {
 
-        const points = chart.getElementsAtEventForMode(evt, 'index', {
-          intersect: false
-        })
-        startIndex = points[0].index;
-        const rect = canvas.getBoundingClientRect()
-        selectionRect.startX = evt.clientX - rect.left
-        selectionRect.startY = chart.chartArea.top
-        drag = true
+          const points = chart.getElementsAtEventForMode(evt, 'index', {
+            intersect: false
+          });
+          drag = false;
+          cleanRequired = true
+          endIndex = points[0].index;
+          $store.commit('main/segmentIsSelected', true)
+        }
       })
 
       var throttle = undefined
@@ -139,21 +152,13 @@ export default defineComponent({
               emit('dragOnGraph', { startIndex, endIndex })
             }
             throttle = false
-          }, 50)
+          }, 5)
       }
 
       canvas.addEventListener('pointermove', evt => {
         doThrottle(evt)
       })
 
-      canvas.addEventListener('pointerup', evt => {
-        const points = chart.getElementsAtEventForMode(evt, 'index', {
-          intersect: false
-        });
-        drag = false;
-        endIndex = points[0].index;
-        $store.commit('main/segmentIsSelected', true)
-       });
 
        $store.commit('main/segmentIsSelected', true)
 
@@ -202,14 +207,6 @@ export default defineComponent({
     })
 
     var ctx = document.getElementById('profile-chart');
-
-    // Tooltip.positioners.bottom = function (elements, eventPosition) {
-    //   const { chartArea : { bottom }, scales: { x, y } } = this.chart
-    //   return {
-    //     x: x.getPixelForValue(x.getValueForPixel(eventPosition.x)),
-    //     y: bottom
-    //   }
-    // }
 
     const externalTooltipHandler = (context) => {
       // Tooltip Element
@@ -280,10 +277,21 @@ export default defineComponent({
     const tooltipLine = {
       id: 'tooltipLine',
       afterDraw: chart => {
+        const box = document.getElementById('slope-box')
         if (chart.tooltip._active && chart.tooltip._active.length) {
           const ctx = chart.ctx
           ctx.save()
-          const activePoint = chart.tooltip._active[0]
+          const activePoint = chart.tooltip._active[1]
+          if (!activePoint) return
+          // ctx.font = "30px Arial";
+          const idx = activePoint.index
+          const label = chart.config._config.data.labels[idx].split(';')[1]
+          box.style.marginLeft = (activePoint.element.x + 10) +'px'
+          const offset = box.clientHeight / 2
+          box.style.marginTop = (activePoint.element.y - offset) +'px'
+          const icon = label > 0 ? 'fa-up-long' : 'fa-down-long'
+          box.innerHTML = '<span>' + label +'% </span>' + '<i class="slope-icon fa-solid ' + icon + '"></i>'
+
           ctx.beginPath()
           ctx.setLineDash([5, 7])
           ctx.moveTo(activePoint.element.x, 0)
@@ -295,10 +303,12 @@ export default defineComponent({
         }
       }
     }
+
     plugins.value = [tooltipLine]
 
-    const mouseOut = (e) => {
+    const mouseOut = async (e) => {
       drag = false;
+      document.getElementById('slope-box').innerHTML = ''
       emit('outGraphic')
     }
 
@@ -351,5 +361,19 @@ export default defineComponent({
 <style scoped>
 .padding-canvas{
   padding-top: 0px;
+}
+#slope-box{
+  position:absolute;
+  border-radius:4px;
+  z-index: 10;
+  padding:5px;
+  background-color: white;
+  color: 'black'
+}
+#slope-box:empty{
+  display:none;
+}
+.slope-icon {
+  margin-left: 5px;
 }
 </style>

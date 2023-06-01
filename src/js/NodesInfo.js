@@ -34,6 +34,7 @@ export class NodesInfo {
     this.elevations = []
     this.distances = []
     this.speed = []
+    this.slopes = []
     this.tolerance = 60
     this.selectedLayerId = undefined
 
@@ -79,7 +80,7 @@ export class NodesInfo {
     })
   }
 
-  activate() {
+  async activate() {
     var _this = this
     this.active = true
     this.layerSelector = new LayerSelector(this.map,{
@@ -88,7 +89,7 @@ export class NodesInfo {
 
     if (!this.selectedLayerId) {
       this.layerSelector.on()
-      this.map.once('layer-selected', function(e){
+      this.map.once('layer-selected', async function(e){
         _this.selectedLayerId = e.layer.get('id')
         _this.layerSelector.off()
         var coords = e.layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
@@ -122,14 +123,13 @@ export class NodesInfo {
   }
 
   deactivate() {
-    this.selectedLayerId = undefined
     unByKey(this.bindPointerMove)
     unByKey(this.bindClick)
     if (this.selectedSegmentLayer) {
       this.cleanSegment()
 
     }
-    this.selectedLayerId = undefined
+    // this.selectedLayerId = undefined
     this.selectedNodeLayer.getSource().clear()
     this.selectedNodeLayer.getSource().addFeature(
       new Feature({
@@ -213,6 +213,7 @@ export class NodesInfo {
 
   pointerMoveLayer(e) {
     var _this = this
+
     if (this.throttleTimer) return
     this.throttleTimer = true
     setTimeout(async () => {
@@ -352,13 +353,13 @@ export class NodesInfo {
     }
     response.type = 'track-info'
 
-    let xDataGraph
-    let yDataGraph
-    let speedData
+    let xDataGraph, yDataGraph
+    let speedData, slopeData
 
     xDataGraph = this.distances.slice(first, last + 1)
     yDataGraph = this.elevations.slice(first, last + 1)
     speedData = this.speed.slice(first, last + 1)
+    slopeData = this.slopes.slice(first, last + 1)
 
     response.distances = xDataGraph
     // Elevations only when this.selectedSegmentLayer  has no coords
@@ -368,6 +369,7 @@ export class NodesInfo {
 
     response.layerId = this.selectedLayerId
     response.speed = speedData
+    response.slope = slopeData
     response.indexes = { first, last }
     this.trackInfo = response
     if (this.callback) {
@@ -379,49 +381,77 @@ export class NodesInfo {
   getNodesSource(coords) {
     const _this = this
     const nodesSource = new VectorSource({})
+
     let dist = 0
+    let prev
     let speed = 0
+    let data = []
+    let ele, slope
+    let incEle = 0, maxSlope = 0, minSlope = 0, maxIndex = 0, minIndex = 0
     coords.forEach((cur, index) => {
+      ele = cur[2] < 0 ? 0 : Math.floor(cur[2])
       if (index === 0) {
         dist = 0
         speed = 0
+        slope = 0
       } else {
-        const prev = coords[index -1]
+        prev = coords[index -1]
         var c1 = transform([cur[0], cur[1]], 'EPSG:3857', 'EPSG:4326')
         var c2 = transform([prev[0], prev[1]], 'EPSG:3857', 'EPSG:4326')
-        var incDist = Math.floor(
+        var incDist = Distance(c1, c2)
           // projDistance([prev[0], prev[1]], [cur[0], cur[1]])
-          Distance(c1, c2)
-        )
+
         var incTime = cur[3] - prev[3]
-        var speed = (incDist / incTime) * 3.6 // kms/h
+        speed = (incDist / incTime) * 3.6 // kms/h
         dist += incDist
+        incEle = cur[2] - prev[2]
+        slope = Math.floor(Math.atan(incEle / incDist) * (180 / Math.PI))
+        if (slope < minSlope) {
+          minSlope = slope
+          minIndex = dist
+        }
+        if (slope > maxSlope) {
+          maxSlope = slope
+          maxIndex = dist
+        }
       }
-      const ele = Math.floor(cur[2])
+  
       var f = new Feature({
-        geometry: new Point([cur[0], cur[1], cur[2], cur[3]]),
+        geometry: new Point([cur[0], cur[1], cur[2], cur[3], slope]),
         id: index,
         d: dist,
         e: ele,
         t: cur[3],
-        s: speed
+        s: speed,
+        sl: slope
       })
-      this.distances.push(dist)
+      data.push([cur[0], cur[1], cur[2], cur[3], dist, ele, cur[3], speed, slope ])
+      this.distances.push(dist + ';' + slope)
       this.elevations.push(ele)
       this.speed.push(speed)
       nodesSource.addFeature(f)
     })
+    this.initCoords = data
+    // console.log(maxSlope, maxIndex)
+    // console.log(minSlope, minIndex)
     return nodesSource
   }
 
+  setSelectedNode(coord) {
+    this.selectedNodeLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(
+      coord
+    )
+  }
+  
   changeTolerance(tolerance, firstIndex, lastIndex) {
     this.tolerance = tolerance
     this.sumUp(firstIndex, lastIndex)
   }
 
-  async getInfoFromCoords(coords) {
+  async getInfoFromCoords(coords, layerId) {
+    this.selectedLayerId = layerId
     this.initCoords = coords
-    this.nodesSource = this.getNodesSource(coords)
+    this.nodesSource = await this.getNodesSource(coords)
     this.startIndex = 0
     this.endIndex = coords.length - 1
     this.sumUp(0, this.initCoords.length - 1)

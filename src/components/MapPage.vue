@@ -44,12 +44,10 @@ import Point from 'ol/geom/Point.js';
 import LineString from 'ol/geom/LineString.js';
 import MultiLineString from 'ol/geom/MultiLineString.js';
 import { transform, transformExtent } from 'ol/proj.js'
-import {animatedPointStyle} from '../js/utils.js';
 import {containsXY} from 'ol/extent';
 
 export default {
   setup() {
-    let animatedPoint
     let activeLayerCoords = undefined
     const $store = useStore()
     const center = ref(transform([ 2.92298, 41.93445 ], 'EPSG:4326', 'EPSG:3857'));
@@ -420,25 +418,12 @@ export default {
 
     onMounted(() => {
       // Add markers empty layer
-      console.log(map.value)
       $store.commit('main/setZoom', Math.floor(map.value.map.getView().getZoom()))
       markersLayer = new VectorLayer({
         source: new VectorSource(),
         style: crossStyle
       });
       map.value.map.addLayer(markersLayer)
-
-      animatedPoint = new VectorLayer({
-        id: 'animatedPoint',
-        source: new VectorSource({
-          features: [
-            new Feature({
-              geometry: new Point([])
-            })
-          ]}),
-        style: animatedPointStyle
-      })
-      map.value.map.addLayer(animatedPoint)
 
       map.value.map.on('moveend', updateViewState)
       // map.value.map.on('pointermove', checkPointerMove)
@@ -513,7 +498,7 @@ export default {
         case 'info':
           tools.info.deactivate()
           // map.value.map.un('track-info', showTrackData)
-          // map.value.map.un('unselect-track', unselectSegment)
+          map.value.map.un('unselect-track', unselectSegment)
           $store.commit('main/setTrackInfo', {
             distance:undefined,
             time:undefined,
@@ -605,7 +590,7 @@ export default {
       } else {
         activeLayerCoords = tools.info.initCoords
         $store.commit('main/ActiveLayerTrackInfo', payload)
-        $store.commit('main/activeLayerId', payload.layerId)
+        // $store.commit('main/activeLayerId', payload.layerId)
       }
 
       $store.commit('main/graphData', {
@@ -656,7 +641,7 @@ export default {
     const addNewSegment = function (fromLayerId, coords, type) {
       const layer = findLayer(fromLayerId)
       const filename = layer.get('name') + '(' + type + ')'
-      const trackinfo = tools.info.getInfoFromCoords(coords)
+      const trackinfo = tools.info.getInfoFromCoords(coords, fromLayerId)
       const layerId = newLayerId()
 
       var newLayer = new VectorLayer({
@@ -787,7 +772,7 @@ export default {
     const drawPointFromGraphic = (index) => {
       window.clearTimeout(debounce);
       var coord = tools.info.initCoords[index]
-      animatedPoint.getSource().getFeatures()[0].getGeometry().setCoordinates(coord)
+      tools.info.setSelectedNode(coord)
       var extent = map.value.map.getView().calculateExtent(map.value.map.getSize())
       if (!containsXY(extent, coord[0], coord[1])) {
         debounce = window.setTimeout(() => {
@@ -806,15 +791,11 @@ export default {
       const layer = findLayer(layerId)
       const coords = getCoords(layer)
       // map.value.map.once('track-info', showTrackData)
-      tools.info.callback = showTrackData
-      await tools.info.getInfoFromCoords(coords)
       tools.info.deactivate()
+      tools.info.callback = showTrackData
+      await tools.info.getInfoFromCoords(coords, layerId)
       tools.info.selectedLayersId = layerId
       activateNodesInfo()
-    }
-
-    const clearAnimatedPoint = () => {
-      animatedPoint.getSource().getFeatures()[0].getGeometry().setCoordinates([])
     }
 
     watch(activeLayerId, ( newValue, oldValue ) => {
@@ -840,7 +821,6 @@ export default {
 
     return {
       dragOnGraph,
-      clearAnimatedPoint,
       trackProfile,
       drawPointFromGraphic,
       center,
