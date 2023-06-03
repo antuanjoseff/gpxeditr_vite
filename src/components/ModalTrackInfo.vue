@@ -104,6 +104,7 @@
           <q-card-section class="graph-wrapper" @mouseleave="mouseOut">
             <div id="tooltip-header"></div>
             <line-chart
+              ref="LINECHART"
               height="250"
               @overGraphic="overGraphic"
               @outGraphic="outGraphic"
@@ -128,6 +129,7 @@ export default defineComponent({
   setup(props, context){
     const $store = useStore()
     const slider = ref(false)
+    const LINECHART = ref()
     const sliderValue = ref(false)
     const activeTool = computed(() => {
       return $store.getters['main/activeTool']
@@ -176,8 +178,17 @@ export default defineComponent({
       $store.commit('main/setActiveLayer', -1)
     }
 
+    const clearGraphSelection = () => {
+      // Check if LINECHART is rendered
+      if (LINECHART.value) {
+        LINECHART.value.clearGraphSelection()
+      }
+    }
+
     return {
       info,
+      LINECHART,
+      clearGraphSelection,
       mouseOut,
       slider,
       sliderValue,

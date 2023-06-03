@@ -432,8 +432,12 @@ export class NodesInfo {
       nodesSource.addFeature(f)
     })
     this.initCoords = data
-    // console.log(maxSlope, maxIndex)
-    // console.log(minSlope, minIndex)
+    this.speedAvg = this.speed
+    // Smooth speed. Avg neighbours
+    for (var index = 1; index < this.speed.length - 2; index++) {
+      this.speed[index] = (this.speed[index - 1] + this.speed[index] + this.speed[index + 1]) / 3
+    }
+    // this.speed = this.speedAvg
     return nodesSource
   }
 

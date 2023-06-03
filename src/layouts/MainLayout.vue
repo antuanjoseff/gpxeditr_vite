@@ -138,6 +138,7 @@
         </div>
         <div>
           <modal-track-info 
+            ref="GRAPH"
             @selectedSegmentCreateTrack="selectedSegmentCreateTrack"
             @overGraphic="overGraphic"
             @outGraphic="outGraphic"
@@ -168,6 +169,7 @@ export default defineComponent({
   setup (props, context) {
     const addPointClick = ref(false)
     const latLon = ref()
+    const GRAPH = ref()
     const leftDrawerOpen = ref(false)
     const $store = useStore()
     const MAP = ref()
@@ -316,6 +318,7 @@ export default defineComponent({
 
     const trackProfile = (layerId) => {
       MAP.value.trackProfile(layerId)
+      GRAPH.value.clearGraphSelection()
     }
 
     const dragOnGraph = (payload) => {
@@ -323,6 +326,7 @@ export default defineComponent({
     }
 
     return {
+      GRAPH,
       trackProfile,
       dragOnGraph,
       outGraphic,

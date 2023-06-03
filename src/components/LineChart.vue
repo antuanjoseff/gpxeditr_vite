@@ -71,6 +71,19 @@ export default defineComponent({
       )
     }
 
+    const clearGraphSelection = () => {
+      $store.commit('main/segmentIsSelected', false)
+      drag = false
+      cleanRequired = false
+      const rect = canvas.getBoundingClientRect();
+      selectionContext.clearRect(0, 0, canvas.width, canvas.height);
+      selectionContext.fillRect(0,
+        chart.chartArea.top,
+        1,
+        chart.chartArea.bottom - chart.chartArea.top);
+    }
+
+
     onMounted(async () => {
       await nextTick()
       window.addEventListener("resize", resizeHandler)
@@ -84,18 +97,6 @@ export default defineComponent({
         w: 0,
         startX: 0,
         startY: 0
-      }
-
-      const clearGraphSelection = () => {
-        $store.commit('main/segmentIsSelected', false)
-        drag = false
-        cleanRequired = false
-        const rect = canvas.getBoundingClientRect();
-        selectionContext.clearRect(0, 0, canvas.width, canvas.height);
-        selectionContext.fillRect(0,
-          chart.chartArea.top,
-          1,
-          chart.chartArea.bottom - chart.chartArea.top);
       }
 
       canvas.addEventListener('pointerdown', evt => {
@@ -349,6 +350,7 @@ export default defineComponent({
     return {
       CHART,
       data,
+      clearGraphSelection,
       mouseOut,
       plugins,
       options,
