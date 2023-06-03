@@ -38,6 +38,7 @@ import { TrackInvers } from '../js/TrackInvers.js';
 import { TrackJoin } from '../js/TrackJoin.js';
 import { NodesInfo } from '../js/NodesInfo.js';
 import { DrawTrack } from '../js/DrawTrack.js';
+import { HandDraw } from '../js/HandDraw.js';
 import { Distance } from '../js/utils.js';
 import Feature from 'ol/Feature.js';
 import Point from 'ol/geom/Point.js';
@@ -474,6 +475,9 @@ export default {
         case 'draw':
           activateDrawTrack()
           break
+        case 'handDraw':
+          activateHandDraw()
+          break
         case 'back':
           tools.draw.back()
           break
@@ -509,6 +513,9 @@ export default {
           draw.deactivate()
           map.value.map.un('drawn-part', listenDrawnParts)
           break
+        case 'handDraw':
+          tools.handDraw.deactivate()
+          break
       }
     }
 
@@ -530,6 +537,10 @@ export default {
 
     const activateJoin = () => {
       tools.join.activate()
+    }
+
+    const activateHandDraw = () => {
+      tools.handDraw.activate()
     }
 
     const activateNodesInfo = () => {
@@ -592,36 +603,38 @@ export default {
         $store.commit('main/ActiveLayerTrackInfo', payload)
         // $store.commit('main/activeLayerId', payload.layerId)
       }
+      const datasets = []
+      if (payload.speed.length) {
+        datasets.push ({
+          label: 'Speed ',
+          data: payload.speed,
+          fill: true,
+          borderColor: 'rgb(0,0,255, .3)',
+          backgroundColor: 'rgb(0, 0, 255, 0.2)',
+          borderWidth: '.5',
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: 'black',
+          tension: 0.2,
+          yAxisID: 'speed'
+          })
+      }
 
+      datasets.push({
+        label: 'Altitud ',
+        yAxisID: 'altitud',
+        backgroundColor: 'rgb(255, 50, 50, 0.6)',
+        data: payload.elevations,
+        fill: true,
+        borderWidth: 15,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: 'black',
+        tension: 0.2
+      })
       $store.commit('main/graphData', {
         labels: payload.distances,
-        datasets: [
-        {
-            label: 'Speed ',
-            data: payload.speed,
-            fill: true,
-            borderColor: 'rgb(0,0,255, .3)',
-            backgroundColor: 'rgb(0, 0, 255, 0.2)',
-            borderWidth: '.5',
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: 'black',
-            tension: 0.2,
-            yAxisID: 'speed'
-          },
-          {
-            label: 'Altitud ',
-            yAxisID: 'altitud',
-            backgroundColor: 'rgb(255, 50, 50, 0.6)',
-            data: payload.elevations,
-            fill: true,
-            borderWidth: 15,
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: 'black',
-            tension: 0.2
-          }
-        ]
+        datasets: datasets
       })
     }
 
@@ -764,6 +777,13 @@ export default {
         }
       })
       tools.invers = invers
+
+      let handDraw = new HandDraw(map.value.map, {
+        callback: function (linestring) {
+          addLayerFromFeature(linestring, 'linestring', 'drawn track')
+        }
+      })
+      tools.handDraw = handDraw
     }
 
     let debounce;

@@ -392,7 +392,10 @@ export class NodesInfo {
       ele = cur[2] < 0 ? 0 : Math.floor(cur[2])
       if (index === 0) {
         dist = 0
-        speed = 0
+        if (cur[3] === undefined) {
+          this.tolerance = 0
+          speed = undefined
+        }
         slope = 0
       } else {
         prev = coords[index -1]
@@ -428,7 +431,9 @@ export class NodesInfo {
       data.push([cur[0], cur[1], cur[2], cur[3], dist, ele, cur[3], speed, slope ])
       this.distances.push(dist + ';' + slope)
       this.elevations.push(ele)
-      this.speed.push(speed)
+      if (!isNaN(speed)) {
+        this.speed.push(speed)
+      }
       nodesSource.addFeature(f)
     })
     this.initCoords = data
@@ -439,6 +444,36 @@ export class NodesInfo {
     }
     // this.speed = this.speedAvg
     return nodesSource
+  }
+
+  fillTimeGaps(){
+    var timePos = 3
+    function CoordHasTime(coord) {
+      return coord[timePos] !== undefined || coord[timePos] !== ''
+    }
+    var index = 0
+    while (index < this.initCoords.length - 1) {
+      if (CoordHasTime(index)) {
+        index += 1
+      } else {
+        var index2 = index + 1
+        while (index2 < this.initCoords.length -1 && !CoordHasTime(index2) ) {
+          index2 += 1
+        }
+        if (!CoordHasTime(index2)){
+          //Fill gap between index and index2
+          var nPointsWithoutTime = index2 - index
+          var incTime = this.initCoords[index2][timePos] - this.initCoords[index - 1][timePos]
+          var incTimePerPoint = incTime / nPointsWithoutTime
+          for (var a = index; a < index2; a++) {
+            this.initCoords[a][timePos] = this.initCoords[a - 1][timePos] + incTimePerPoint
+          }
+        } else {
+          console.log('time gap reaches the end. Can not fill gap')
+        }
+        index = index2 + 1
+      }
+    }
   }
 
   setSelectedNode(coord) {

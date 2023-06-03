@@ -213,9 +213,15 @@ export default defineComponent({
       // Tooltip Element
       const {chart, tooltip} = context;
       if (chart.tooltip._active && chart.tooltip._active.length) {
-        const eleData = tooltip.dataPoints[1]
-        const speedData = tooltip.dataPoints[0]
-        doTooltip(eleData, speedData, chart.chartArea)
+        const nDatasets = chart.config._config.data.datasets.length
+        if (nDatasets === 2) {
+          const eleData = tooltip.dataPoints[1]
+          const speedData = tooltip.dataPoints[0]
+          doTooltip(eleData, speedData, chart.chartArea)
+        } else {
+          const eleData = tooltip.dataPoints[0]
+          doTooltip(eleData, undefined, chart.chartArea)
+        }
       }
     }
 
@@ -278,11 +284,17 @@ export default defineComponent({
     const tooltipLine = {
       id: 'tooltipLine',
       afterDraw: chart => {
+        let activePoint
         const box = document.getElementById('slope-box')
         if (chart.tooltip._active && chart.tooltip._active.length) {
           const ctx = chart.ctx
           ctx.save()
-          const activePoint = chart.tooltip._active[1]
+          if (chart.config._config.data.datasets.length === 2) {
+            activePoint = chart.tooltip._active[1]
+          } else {
+            activePoint = chart.tooltip._active[0]
+          }
+
           if (!activePoint) return
           // ctx.font = "30px Arial";
           const idx = activePoint.index
@@ -315,6 +327,7 @@ export default defineComponent({
 
     const doTooltip = (eleData, speedData, chartArea) => {
       let indexValue = 0
+      let speedFormatted = '¿?'
       if (eleData && eleData.dataIndex) {
         indexValue = eleData.dataIndex
       } else {
@@ -322,7 +335,10 @@ export default defineComponent({
       }
 
       const total  = parseInt(eleData.label)
-      const speedFormatted = speedData.formattedValue + ' kms/h'
+      if (speedData) {
+        speedFormatted = speedData.formattedValue + ' kms/h'
+      }
+
       const kms = Math.floor(total /  1000)
       const meters = Math.floor(total - (1000 * kms))
       let label = (kms) ? kms + ' kms ' : ''

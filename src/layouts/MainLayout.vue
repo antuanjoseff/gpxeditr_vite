@@ -65,6 +65,23 @@
               @click="toggleTool('back')"
             />
           </div>
+          <div class="draw-tool">
+            <q-icon
+              name="brush"
+              size="2em"
+              class="draw"
+              :class="handDrawClass"
+              :title="existsLayers?'Click on map to draw a path':''"
+              @click="toggleTool('handDraw')"
+            />
+            <q-icon
+              name="undo"
+              size="2em"
+              class="back"
+              :class="backClass"
+              :title="existsLayers?'Node info':'Active a layer first'"
+            />
+          </div>
 
           <!-- NODE INFO -->
         </q-toolbar-title>
@@ -186,6 +203,11 @@ export default defineComponent({
       const enable = (mapZoom.value > 12 && !activeLayerId.value )?'enabled':'disabled'
       const active = activeTool.value === 'draw' ? 'active':'inactive'
       return enable + ' ' + active
+    })
+
+    const handDrawClass = computed(() => {
+      const active = activeTool.value === 'handDraw' ? 'active':'inactive'
+      return 'enabled ' + active
     })
 
     const nodesinfoClass = computed(() => {
@@ -337,6 +359,7 @@ export default defineComponent({
       numberOfLayers,
       existsLayers,
       drawClass,
+      handDrawClass,
       backClass,
       nodesinfoClass,
       cutterClass,
