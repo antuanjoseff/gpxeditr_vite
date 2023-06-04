@@ -89,6 +89,13 @@
                     label="Create Track"
                     @click="createTrack"
                   />
+                  <q-btn
+                    v-if="trackHasTimeGaps"
+                    color="white"
+                    text-color="black"
+                    label="Fill Time Gaps"
+                    @click="fillTimeGaps"
+                  />
 
                   <q-btn
                     v-else
@@ -124,15 +131,20 @@ import LineChart from 'components/LineChart.vue'
 export default defineComponent({
 
   name: 'ModalTrackInfo',
-  emits: ['selected-segment-create-track', 'over-graphic', 'dragOnGraph'],
+  emits: ['selected-segment-create-track', 'over-graphic', 'dragOnGraph', 'fillTimeGap'],
   components: { LineChart },
   setup(props, context){
     const $store = useStore()
     const slider = ref(false)
     const LINECHART = ref()
     const sliderValue = ref(false)
+    
     const activeTool = computed(() => {
       return $store.getters['main/activeTool']
+    })
+
+    const trackHasTimeGaps = computed(() => {
+      return $store.getters['main/ActiveLayerTrackInfo'].gapped
     })
 
     const info = computed(() => {
@@ -168,6 +180,10 @@ export default defineComponent({
       document.getElementById('tooltip-header').innerHTML = ''
     }
 
+    const fillTimeGaps = (data) => {
+      context.emit('fillTimeGaps')
+    }
+
     const mouseOut = (data) => {
       console.log('out')
       document.getElementById('slope-box').innerHTML = ''
@@ -187,7 +203,9 @@ export default defineComponent({
 
     return {
       info,
+      fillTimeGaps,
       LINECHART,
+      trackHasTimeGaps,
       clearGraphSelection,
       mouseOut,
       slider,

@@ -252,7 +252,7 @@ export class NodesInfo {
       return {}
     }
     var _this = this
-
+    var gapped = false
     // Copy nodes just in case they are changed
     // var first = this.startIndex
     // var last = this.endIndex
@@ -316,7 +316,7 @@ export class NodesInfo {
     }
 
     // Three dimensions means x,y, e , elevations is in third place
-    // Four dimensions means x, y, t, e Elevation is in fourth place
+    // Four dimensions means x, y, e, t time is in fourth place
 
     if (coordsList[0].length >= 3) {
       // Index of elevation values
@@ -327,6 +327,10 @@ export class NodesInfo {
       for (var index = 1; index <= coordsList.length - 1; index++) {
         const cur = coordsList[index]
         const prev = coordsList[index - 1]
+        // Check if there is a time gap
+        if (cur[3] === undefined) {
+          gapped = true
+        }
         if (tolerance != 0) {
           elapsed += (cur[3] - prev[3])
         } else {
@@ -371,6 +375,7 @@ export class NodesInfo {
     response.speed = speedData
     response.slope = slopeData
     response.indexes = { first, last }
+    response.gapped = gapped
     this.trackInfo = response
     if (this.callback) {
       this.callback(response)
@@ -386,6 +391,8 @@ export class NodesInfo {
     let prev
     let speed = 0
     let data = []
+    this.elevations = []
+    this.speed = []
     let ele, slope
     let incEle = 0, maxSlope = 0, minSlope = 0, maxIndex = 0, minIndex = 0
     coords.forEach((cur, index) => {
@@ -418,17 +425,18 @@ export class NodesInfo {
           maxIndex = dist
         }
       }
-  
+      const t = cur[3] !== 0 ? cur[3] : undefined
       var f = new Feature({
-        geometry: new Point([cur[0], cur[1], cur[2], cur[3], slope]),
+        geometry: new Point([cur[0], cur[1], cur[2], t, slope]),
         id: index,
         d: dist,
         e: ele,
-        t: cur[3],
+        t: t,
         s: speed,
         sl: slope
       })
-      data.push([cur[0], cur[1], cur[2], cur[3], dist, ele, cur[3], speed, slope ])
+      // data.push([cur[0], cur[1], cur[2], t, dist, ele, t, speed, slope ])
+      data.push([cur[0], cur[1], cur[2], t])
       this.distances.push(dist + ';' + slope)
       this.elevations.push(ele)
       if (!isNaN(speed)) {
@@ -446,27 +454,30 @@ export class NodesInfo {
     return nodesSource
   }
 
-  fillTimeGaps(){
+  async fillTimeGaps(){
+    var _this = this
+    var elePos = 2
     var timePos = 3
     function CoordHasTime(coord) {
-      return coord[timePos] !== undefined || coord[timePos] !== ''
+      return coord[timePos] !== undefined && coord[timePos] !== 0
     }
     var index = 0
-    while (index < this.initCoords.length - 1) {
-      if (CoordHasTime(index)) {
+    while (index < _this.initCoords.length - 1) {
+      if (CoordHasTime(_this.initCoords[index])) {
         index += 1
       } else {
         var index2 = index + 1
-        while (index2 < this.initCoords.length -1 && !CoordHasTime(index2) ) {
+        while (index2 < this.initCoords.length -1 && !CoordHasTime(_this.initCoords[index2]) ) {
           index2 += 1
         }
         if (!CoordHasTime(index2)){
           //Fill gap between index and index2
           var nPointsWithoutTime = index2 - index
-          var incTime = this.initCoords[index2][timePos] - this.initCoords[index - 1][timePos]
+          var incTime = _this.initCoords[index2][timePos] - _this.initCoords[index - 1][timePos]
           var incTimePerPoint = incTime / nPointsWithoutTime
           for (var a = index; a < index2; a++) {
-            this.initCoords[a][timePos] = this.initCoords[a - 1][timePos] + incTimePerPoint
+            _this.initCoords[a][timePos] = parseInt(_this.initCoords[a - 1][timePos] + incTimePerPoint)
+            _this.initCoords[a][elePos] = _this.initCoords[index - 1][elePos]
           }
         } else {
           console.log('time gap reaches the end. Can not fill gap')
@@ -474,6 +485,8 @@ export class NodesInfo {
         index = index2 + 1
       }
     }
+    await _this.getInfoFromCoords(_this.initCoords,_this.selectedLayerId)
+    return _this.initCoords
   }
 
   setSelectedNode(coord) {

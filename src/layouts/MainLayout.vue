@@ -78,8 +78,9 @@
               name="undo"
               size="2em"
               class="back"
-              :class="backClass"
+              :class="backHandDrawClass"
               :title="existsLayers?'Node info':'Active a layer first'"
+              @click="toggleTool('backHandDraw')"
             />
           </div>
 
@@ -160,6 +161,7 @@
             @overGraphic="overGraphic"
             @outGraphic="outGraphic"
             @dragOnGraph="dragOnGraph"
+            @fillTimeGaps="fillTimeGaps"
           />
         </div>
       </div>
@@ -197,6 +199,10 @@ export default defineComponent({
 
     const backClass = computed(() => {
       return (activeTool.value === 'draw' && $store.getters['main/numberOfDrawnParts'] > 0) ? 'enabled' : 'disabled'
+    })
+
+    const backHandDrawClass = computed(() => {
+      return (activeTool.value === 'handDraw' && $store.getters['main/numberOfDrawnParts'] > 0) ? 'enabled' : 'disabled'
     })
 
     const drawClass = computed(() => {
@@ -299,7 +305,7 @@ export default defineComponent({
 
     const toggleTool = function (name) {
       // back is a one click tool
-      if (name === 'back') {
+      if (['back', 'backHandDraw'].includes(name)) {
         MAP.value.activateTool(name)
         return
       }
@@ -347,9 +353,14 @@ export default defineComponent({
       MAP.value.dragOnGraph(payload)
     }
 
+    const fillTimeGaps = () => {
+      MAP.value.fillTimeGaps()
+    }
+
     return {
       GRAPH,
       trackProfile,
+      fillTimeGaps,
       dragOnGraph,
       outGraphic,
       overGraphic,
@@ -361,6 +372,7 @@ export default defineComponent({
       drawClass,
       handDrawClass,
       backClass,
+      backHandDrawClass,
       nodesinfoClass,
       cutterClass,
       inversClass,

@@ -452,7 +452,7 @@ export default {
 
     const activateTool = (tool) => {
       toolIsActive = true
-      if (tool !== 'back') {
+      if (tool !== 'back' && tool !== 'backHandDraw') {
           for (var key in tools) {
           tools[key].deactivate()
         }
@@ -480,6 +480,9 @@ export default {
           break
         case 'back':
           tools.draw.back()
+          break
+        case 'backHandDraw':
+          tools.handDraw.back()
           break
       }
     }
@@ -593,7 +596,7 @@ export default {
     })
 
     const showTrackData = function (payload) {
-      const data = updateGraphData(payload)
+      updateGraphData(payload)
       // UPDATE GRAPH DATA
       if (!payload.elevations) {
         updateGraphData(payload)
@@ -652,6 +655,7 @@ export default {
     }
 
     const addNewSegment = function (fromLayerId, coords, type) {
+      console.log(fromLayerId)
       const layer = findLayer(fromLayerId)
       const filename = layer.get('name') + '(' + type + ')'
       const trackinfo = tools.info.getInfoFromCoords(coords, fromLayerId)
@@ -779,7 +783,11 @@ export default {
       tools.invers = invers
 
       let handDraw = new HandDraw(map.value.map, {
-        callback: function (linestring) {
+        coordsCounter: (numberOfCoords) => {
+          console.log(numberOfCoords)
+          $store.commit('main/numberOfDrawnParts', numberOfCoords)
+        },
+        callbackDrawFeaure: function (linestring) {
           addLayerFromFeature(linestring, 'linestring', 'drawn track')
         }
       })
@@ -839,9 +847,16 @@ export default {
       tools.info.sumUp(startIndex, endIndex)
     }
 
+    const fillTimeGaps = async() => {
+      var coords = await tools.info.fillTimeGaps()
+      const layer = findLayer(activeLayerId.value)
+      layer.getSource().getFeatures()[0].getGeometry().setCoordinates(coords)
+    }
+
     return {
       dragOnGraph,
       trackProfile,
+      fillTimeGaps,
       drawPointFromGraphic,
       center,
       tools,
