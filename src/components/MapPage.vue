@@ -222,6 +222,13 @@ export default {
           featureProjection: 'EPSG:3857'
         })
         let linestrigs = []
+        let points = []
+        features.forEach((f) => {
+          if (f.getGeometry().getType().toLowerCase() === 'point') {
+            points.push(f)
+          }
+        })
+        console.log(points)
         features.forEach((f) => {
           if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
             const lns = f.getGeometry().getLineStrings()
@@ -691,8 +698,10 @@ export default {
     var downloadGPX = function (layerId) {
       const layer = findLayer(layerId)
       var features = layer.getSource().getFeatures()
+      console.log(features.length)
       var coords = []
       features.forEach(element => {
+        console.log(element.getGeometry().getType())
         coords = [...coords, ...element.getGeometry().getCoordinates()]
       });
       var text = new GPX().writeFeatures(

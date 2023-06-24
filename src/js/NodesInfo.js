@@ -56,6 +56,11 @@ export class NodesInfo {
       })
     })
 
+    this.nodesLayer = new VectorLayer({
+      id: 'nodesLayer',
+      source: new VectorSource()
+    })
+
     this.selectedSegmentLayer = new VectorLayer({
       id: 'segment',
       source: new VectorSource({
@@ -95,6 +100,8 @@ export class NodesInfo {
         var coords = e.layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
         _this.initCoords = coords
         _this.nodesSource = _this.getNodesSource(coords)
+        _this.nodesLayer.setSource(_this.nodesSource)
+        _this.map.addLayer(_this.nodesLayer)
         _this.selectedLayer = e.layer
         _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
         _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
@@ -477,7 +484,9 @@ export class NodesInfo {
           var incTimePerPoint = incTime / nPointsWithoutTime
           for (var a = index; a < index2; a++) {
             _this.initCoords[a][timePos] = parseInt(_this.initCoords[a - 1][timePos] + incTimePerPoint)
-            _this.initCoords[a][elePos] = _this.initCoords[index - 1][elePos]
+            // if (_this.initCoords[a][elePos] === undefined){
+            //   _this.initCoords[index - 1][elePos]
+            // }
           }
         } else {
           console.log('time gap reaches the end. Can not fill gap')

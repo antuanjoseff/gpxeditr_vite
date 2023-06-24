@@ -13,6 +13,7 @@
 
         <q-toolbar-title>
           <!-- CUTTER -->
+          <q-icon name="terrain"></q-icon>
           <q-icon
             size="2em"
             name="content_cut"
