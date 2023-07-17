@@ -72,7 +72,7 @@ export class TrackCutter {
       const hit = this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
         _this.layerToCut = layer
         _this.selectedLayerId = layer.get('id')
-        _this.initCoords = layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+        _this.initCoords = _this.getLinestringFromLayerToCut().getGeometry().getCoordinates()
         _this.nodesLayer = _this.getNodesLayer(_this.initCoords)
 
         var mouseCoord = _this.map.getCoordinateFromPixel(e.pixel)
@@ -97,6 +97,13 @@ export class TrackCutter {
     }, this.throttleTime)
   }
 
+  getLinestringFromLayerToCut() {
+    const features = this.layerToCut.getSource().getFeatures()
+    const linestring = features.find(f => {
+      return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
+    })
+    return linestring
+  }
 
   done() {
     this.callback(
@@ -104,8 +111,8 @@ export class TrackCutter {
       this.tailCoords,
       'cut'
     )
-
-    this.layerToCut.getSource().getFeatures()[0].getGeometry().setCoordinates(this.headCoords)
+    // Modify feature of type linestring
+    this.getLinestringFromLayerToCut().getGeometry().setCoordinates(this.headCoords)
     this.layerToCut.setStyle(this.layerToCut.getStyle())
     this.layerToCut.set('name', 'Cap retallat')
 

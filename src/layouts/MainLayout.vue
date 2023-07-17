@@ -285,7 +285,8 @@ export default defineComponent({
     }
 
     const addPoint = function () {
-      MAP.value.addPoint(latLon.value.split(','))
+      let coords = latLon.value.split(',').map(e => e.trim())
+      MAP.value.addPoint(coords)
       latLon.value = ''
       setTimeout(function () {
         addPointClick.value = false

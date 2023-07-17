@@ -39,7 +39,7 @@ export class TrackInvers {
 
     this.bindFunction = this.map.on('layer-selected', function(e){
       _this.originalLayer = e.layer
-      _this.dimensions = _this.originalLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()[0].length
+      _this.dimensions = _this.getLinestringFromOriginalLayer().getGeometry().getCoordinates()[0].length
       _this.reverse()
       _this.layerSelector.off()
     })
@@ -73,12 +73,20 @@ export class TrackInvers {
     unByKey(this.bindFunction)
   }
 
+  getLinestringFromOriginalLayer() {
+    const features = this.originalLayer.getSource().getFeatures()
+    const linestring = features.find(f => {
+      return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
+    })
+    return linestring
+  }
+
   reverse() {
     var _this = this
     let index = 0
     let animation
     let timestamps = []
-    const coords = this.originalLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+    const coords = this.getLinestringFromOriginalLayer().getGeometry().getCoordinates()
     if (this.dimensions >= 3) {
       timestamps = coords.map((e) => {
         return e[3]
@@ -93,14 +101,14 @@ export class TrackInvers {
 
     function addCoord() {
       index += increment
-      _this.originalLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(coords.slice(0,index))
+      _this.getLinestringFromOriginalLayer().getGeometry().setCoordinates(coords.slice(0,index))
       if (index >= n) {
         clearInterval(animation)
         // timestamps needs reversion again
         for (var a = 0; a < coords.length; a++) {
           coords[a][3] = timestamps[a]
         }
-        _this.originalLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(coords)
+        _this.getLinestringFromOriginalLayer().getGeometry().setCoordinates(coords)
         _this.deactivate()
         _this.activate()
       }

@@ -21,6 +21,31 @@
     <ol-mouseposition-control className="" :target="coordsContainer"/>
     <ol-fullscreen-control />
   </ol-map>
+      <q-menu
+        touch-position
+        context-menu
+      >
+
+      <q-list dense style="min-width: 100px">
+        <q-item clickable v-close-popup v-if="layerIsActive">
+          <q-item-section
+             title="Activa capa"
+            @click="addPointToLayer"
+          >
+            Add waypoint to layer
+          </q-item-section>
+        </q-item>
+      </q-list>
+      <q-list dense style="min-width: 100px">
+        <q-item clickable v-close-popup>
+          <q-item-section
+            @click="addPointToMap"
+          >
+            Add waypoint to map
+          </q-item-section>
+        </q-item>
+      </q-list>
+      </q-menu>
 </template>
 
 <script>
@@ -66,10 +91,11 @@ export default {
     let curZoom = zoom.value
     const gColors = new Colors()
     let layerCounter = 10 // Avoid 0 value
-  
+    let rightClickCoords
     const newLayerId = function () {
-      return layerCounter++
+      return ++layerCounter
     }
+    let dragAndDropInteraction
 
     const styleLine = () => {
       return new Style({
@@ -165,6 +191,10 @@ export default {
       return $store.getters['main/toleranceForElevationGain']
     })
 
+    const layerIsActive = computed(() => {
+      return $store.getters['main/activeLayerId']
+    })
+
     const activeLayerId = computed(() => {
       return $store.getters['main/activeLayerId']
     })
@@ -217,33 +247,46 @@ export default {
 
     const addGpxLayerFromFile = function (contents, filename) {
       try {
+        var waypoints = [], featureStyle
+
         var features = new GPX().readFeatures(contents, {
           dataProjection: 'EPSG:4326',
           featureProjection: 'EPSG:3857'
         })
-        let linestrigs = []
-        let points = []
-        features.forEach((f) => {
-          if (f.getGeometry().getType().toLowerCase() === 'point') {
-            points.push(f)
-          }
-        })
-        console.log(points)
-        features.forEach((f) => {
-          if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
-            const lns = f.getGeometry().getLineStrings()
-            var counter = 0
-            var name = filename
-            lns.forEach(linestring => {
-              addLayerFromFeature(linestring, 'linestring', filename)
-              filename = name + '(' + counter++ + ')'
-            })
+        features.map((e)=>{
+          const type = e.getGeometry().getType().toLowerCase()
+          if (type === 'point') {
+            featureStyle = crossStyle
+            waypoints.push(e)
           } else {
-            if (f.getGeometry().getType().toLowerCase() === 'point') {
-              addLayerFromFeature(f.getGeometry().getCoordinates(), 'point', filename)
+            if (type.indexOf('linestring') > -1) {
+              featureStyle = styleLine(e)
             }
           }
+          e.setStyle(featureStyle)
         })
+
+        var counter = 0
+        for (var idx = 0; idx < features.length; idx++) {
+          var f = features[idx]
+          if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
+            const lns = f.getGeometry().getLineStrings()
+            var name = filename
+            lns.forEach((linestring) => {
+              addLayerFromFeature(linestring, 'linestring', filename )
+              filename = name + '(' + counter++ + ')'
+            })
+          } 
+          // else {
+          //   if (f.getGeometry().getType().toLowerCase() === 'point') {
+          //     addLayerFromFeature(f.getGeometry().getCoordinates(), 'point', filename)
+          //   }
+          // }
+        }
+        // Add waypoints to last GPX segment
+        const layer = findLayer(layerCounter)
+        layer.getSource().addFeatures(waypoints)  
+      
 
       } catch (er) {
         console.log(er)
@@ -322,8 +365,15 @@ export default {
     const addPoint = function (coords) {
       coords.reverse()
       var f = new Feature({
-        geometry: new Point(coords),
+        geometry: new Point(transform(coords, 'EPSG:4326', 'EPSG:3857')),
+        name: 'waypoint'
       })
+
+      if (activeLayerId.value) {
+        const layer = findLayer(activeLayerId.value)
+        console.log(layer)
+        layer.getSource().addFeature(f)
+      }
       markersLayer.getSource().addFeature(f)
       map.value.map.getView().fit(markersLayer.getSource().getExtent());
       map.value.map.getView().setZoom(12)
@@ -370,28 +420,62 @@ export default {
     }
 
     function addDragDropInteraction() {
-      var dragAndDropInteraction = new DragAndDrop({
+      dragAndDropInteraction = new DragAndDrop({
         formatConstructors: [
           GPX,
           OSMXML
         ],
       });
+      
+      map.value.map.addInteraction(dragAndDropInteraction);
+    }
+
+      // --------------------------------------
+      // LOAD GPX
+      // --------------------------------------
+
+    onMounted(() => {
+      // Add markers empty layer
+      map.value.map.getViewport().addEventListener('contextmenu', function (evt) {
+        evt.preventDefault();
+        rightClickCoords = map.value.map.getEventCoordinate(evt)
+      })
+
+      $store.commit('main/setZoom', Math.floor(map.value.map.getView().getZoom()))
+      markersLayer = new VectorLayer({
+        source: new VectorSource(),
+        style: crossStyle
+      });
+      map.value.map.addLayer(markersLayer)
+
+      map.value.map.on('pointerdown', function (event) {
+        console.log(event.originalEvent)
+      })
+      map.value.map.on('moveend', updateViewState)
+      // map.value.map.on('pointermove', checkPointerMove)
+      // map.value.map.on('click', clickOnMap)
+      map.value.map.on('toolFinished', (event) => {
+        $store.commit('main/activeLayerId', null)
+        deactivateTool(event.toolname)
+      })
+
+      coordsContainer.value = document.getElementById('map-coords')
+      addDragDropInteraction()
+      
       dragAndDropInteraction.on('addfeatures', function (event) {
         try{
           const filename = event.file.name
-          var layerStyle
+          var featureStyle
           event.features.map((e)=>{
             const type = e.getGeometry().getType().toLowerCase()
             if (type === 'point') {
-              // e.setStyle(stylePoint(e))
-              // e.setStyle([])
-              layerStyle = []
+              featureStyle = crossStyle
             } else {
               if (type.indexOf('linestring') > -1) {
-                layerStyle = styleLine(e)
-                // e.setStyle(styleLine(e))
+                featureStyle = styleLine(e)
               }
             }
+            e.setStyle(featureStyle)
           })
 
           const vectorSource = new VectorSource({
@@ -401,7 +485,6 @@ export default {
           const vectorLayer = new VectorLayer({
               id: layerID,
               source: vectorSource,
-              style: layerStyle
             })
 
           map.value.map.addLayer(vectorLayer);
@@ -419,30 +502,7 @@ export default {
         } catch (e) {
           console.log(e)
         }
-      });
-
-      map.value.map.addInteraction(dragAndDropInteraction);
-    }
-
-    onMounted(() => {
-      // Add markers empty layer
-      $store.commit('main/setZoom', Math.floor(map.value.map.getView().getZoom()))
-      markersLayer = new VectorLayer({
-        source: new VectorSource(),
-        style: crossStyle
-      });
-      map.value.map.addLayer(markersLayer)
-
-      map.value.map.on('moveend', updateViewState)
-      // map.value.map.on('pointermove', checkPointerMove)
-      // map.value.map.on('click', clickOnMap)
-      map.value.map.on('toolFinished', (event) => {
-        $store.commit('main/activeLayerId', null)
-        deactivateTool(event.toolname)
-      })
-
-      coordsContainer.value = document.getElementById('map-coords')
-      addDragDropInteraction()
+      });      
       initTools()
     })
 
@@ -706,9 +766,8 @@ export default {
       });
       var text = new GPX().writeFeatures(
         // route_layer.getSource().getFeatures(),
-        [new Feature({
-          geometry: new MultiLineString([coords]),
-        })],
+        // [ new Feature({geometry: new MultiLineString([coords])}) ],
+        layer.getSource().getFeatures(),
         {
           featureProjection: 'EPSG:3857',
           dataProjection: 'EPSG:4326'
@@ -862,7 +921,33 @@ export default {
       layer.getSource().getFeatures()[0].getGeometry().setCoordinates(coords)
     }
 
+    const addPointToLayer = () => {
+      if (!activeLayerId.value) return
+      const layer = findLayer(activeLayerId.value)
+      if (rightClickCoords) {
+        var newFeature = new Feature({
+          geometry: new Point(rightClickCoords),
+        })
+        newFeature.setStyle(crossStyle)
+        layer.getSource().addFeature(newFeature)
+      }
+      rightClickCoords = null
+    }   
+
+    const addPointToMap = () => {
+      if (rightClickCoords) {
+        var newFeature = new Feature({
+          geometry: new Point(rightClickCoords),
+        })
+        markersLayer.getSource().addFeature(newFeature)
+      }
+      rightClickCoords = null
+    } 
+
     return {
+      layerIsActive,
+      addPointToLayer,
+      addPointToMap,
       dragOnGraph,
       trackProfile,
       fillTimeGaps,
@@ -890,3 +975,11 @@ export default {
   },
 };
 </script>
+<style scoped>
+.ol-viewport,
+.ol-unselectable.ol-layers,
+.ol-layers,
+canvas{
+  pointer-events: none !important;
+}
+</style>
