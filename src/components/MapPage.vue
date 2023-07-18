@@ -21,31 +21,50 @@
     <ol-mouseposition-control className="" :target="coordsContainer"/>
     <ol-fullscreen-control />
   </ol-map>
-      <q-menu
-        touch-position
-        context-menu
-      >
 
-      <q-list dense style="min-width: 100px">
-        <q-item clickable v-close-popup v-if="layerIsActive">
-          <q-item-section
-             title="Activa capa"
-            @click="addPointToLayer"
-          >
-            Add waypoint to layer
-          </q-item-section>
-        </q-item>
-      </q-list>
-      <q-list dense style="min-width: 100px">
-        <q-item clickable v-close-popup>
-          <q-item-section
-            @click="addPointToMap"
-          >
-            Add waypoint to map
-          </q-item-section>
-        </q-item>
-      </q-list>
-      </q-menu>
+  <!-- CONTEXT MENU -->
+  <q-menu
+    touch-position
+    context-menu
+  >
+  <q-list dense style="min-width: 100px">
+    <q-item clickable v-close-popup v-if="layerIsActive">
+      <q-item-section
+          title="Activa capa"
+        @click="addWaypointStart('layer')"
+      >
+        Add waypoint to layer
+      </q-item-section>
+    </q-item>
+  </q-list>
+  <q-list dense style="min-width: 100px">
+    <q-item clickable v-close-popup>
+      <q-item-section
+        @click="addWaypointStart('map')"
+      >
+        Add waypoint to map
+      </q-item-section>
+    </q-item>
+  </q-list>
+</q-menu>
+
+<!-- INPUT FOR WAYPOINT NAME -->
+<q-dialog v-model="showInput" persistent @keyup.enter="doSubmit">
+  <q-card style="min-width: 350px">
+    <q-card-section>
+      <div class="text-h6">Waypoint name</div>
+    </q-card-section>
+
+    <q-card-section class="q-pt-none">
+      <q-input dense v-model="waypointName" autofocus @keyup.enter="prompt = false" />
+    </q-card-section>
+
+    <q-card-actions align="right" class="text-primary">
+      <q-btn flat label="Cancel" v-close-popup />
+      <q-btn flat label="OK" v-close-popup @click="addWayPoint" />
+    </q-card-actions>
+  </q-card>
+</q-dialog>
 </template>
 
 <script>
@@ -76,10 +95,13 @@ export default {
   setup() {
     let activeLayerCoords = undefined
     const $store = useStore()
-    const center = ref(transform([ 2.92298, 41.93445 ], 'EPSG:4326', 'EPSG:3857'));
-    const projection = ref("EPSG:3857");
-    const zoom = ref(14);
-    const rotation = ref(0);
+    const center = ref(transform([ 2.92298, 41.93445 ], 'EPSG:4326', 'EPSG:3857'))
+    const projection = ref("EPSG:3857")
+    const zoom = ref(14)
+    const showInput = ref(false)
+    const waypointName = ref()
+    const rotation = ref(0)
+    const waypointMode = ref()
     const map = ref(null)
     const coordsContainer = ref()
     let markersLayer
@@ -276,7 +298,12 @@ export default {
               addLayerFromFeature(linestring, 'linestring', filename )
               filename = name + '(' + counter++ + ')'
             })
-          } 
+          }  else {
+            if (f.getGeometry().getType().toLowerCase() === 'linestring') {
+              addLayerFromFeature(f.getGeometry(), 'linestring', filename )
+              filename = name + '(' + counter++ + ')'
+            }
+          }
           // else {
           //   if (f.getGeometry().getType().toLowerCase() === 'point') {
           //     addLayerFromFeature(f.getGeometry().getCoordinates(), 'point', filename)
@@ -328,7 +355,6 @@ export default {
           }
         }
       }
-
 
       const layerId = newLayerId()
       // Do not count base layer
@@ -448,9 +474,6 @@ export default {
       });
       map.value.map.addLayer(markersLayer)
 
-      map.value.map.on('pointerdown', function (event) {
-        console.log(event.originalEvent)
-      })
       map.value.map.on('moveend', updateViewState)
       // map.value.map.on('pointermove', checkPointerMove)
       // map.value.map.on('click', clickOnMap)
@@ -488,7 +511,7 @@ export default {
             })
 
           map.value.map.addLayer(vectorLayer);
-          $store.commit('main/addLayerIds',  layerID)
+          // $store.commit('main/addLayerIds',  layerID)
           $store.commit('main/addLayerToTOC', {
             id: layerID,
             label: filename,
@@ -722,7 +745,6 @@ export default {
     }
 
     const addNewSegment = function (fromLayerId, coords, type) {
-      console.log(fromLayerId)
       const layer = findLayer(fromLayerId)
       const filename = layer.get('name') + '(' + type + ')'
       const trackinfo = tools.info.getInfoFromCoords(coords, fromLayerId)
@@ -758,10 +780,8 @@ export default {
     var downloadGPX = function (layerId) {
       const layer = findLayer(layerId)
       var features = layer.getSource().getFeatures()
-      console.log(features.length)
       var coords = []
       features.forEach(element => {
-        console.log(element.getGeometry().getType())
         coords = [...coords, ...element.getGeometry().getCoordinates()]
       });
       var text = new GPX().writeFeatures(
@@ -852,7 +872,6 @@ export default {
 
       let handDraw = new HandDraw(map.value.map, {
         coordsCounter: (numberOfCoords) => {
-          console.log(numberOfCoords)
           $store.commit('main/numberOfDrawnParts', numberOfCoords)
         },
         callbackDrawFeaure: function (linestring) {
@@ -927,24 +946,57 @@ export default {
       if (rightClickCoords) {
         var newFeature = new Feature({
           geometry: new Point(rightClickCoords),
+          name: waypointName.value
         })
         newFeature.setStyle(crossStyle)
         layer.getSource().addFeature(newFeature)
       }
       rightClickCoords = null
+      waypointName.value = null
+      showInput.value = false
     }   
 
     const addPointToMap = () => {
       if (rightClickCoords) {
         var newFeature = new Feature({
           geometry: new Point(rightClickCoords),
+          name: waypointName.value
         })
         markersLayer.getSource().addFeature(newFeature)
       }
       rightClickCoords = null
+      waypointName.value = null
+      showInput.value = false
     } 
 
+    const addWaypointStart = (mode) => {
+      waypointMode.value = mode
+      showInput.value = true
+    }
+
+    const addWayPoint = () => {
+      if (waypointMode.value === 'map') {
+        addPointToMap()
+      } else {
+        addPointToLayer()
+      }
+    }
+
+    const doSubmit = () => {
+      if (waypointName.value) {
+        addWayPoint()
+      } else {
+        showInput.value = false
+      }
+    }
+
     return {
+      doSubmit,
+      waypointName,
+      addWayPoint,
+      addWaypointStart,
+      waypointMode,
+      showInput,
       layerIsActive,
       addPointToLayer,
       addPointToMap,
