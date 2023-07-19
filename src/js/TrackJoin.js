@@ -83,6 +83,14 @@ export class TrackJoin {
     this.map.removeLayer(this.joinLayer)
   }
 
+  getLinestringFromLayer() {
+    const features = this.selectedLayer.getSource().getFeatures()
+    const linestring = features.find(f => {
+      return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
+    })
+    return linestring
+  }
+
   activate() {
     var _this = this
     this.active = true
@@ -96,7 +104,7 @@ export class TrackJoin {
     if (this.selectedLayer){
       // If first selected layer
       if (!this.selectedLayersId.length) {
-        this.originCoords = this.getLayerCoords(this.selectedLayer)
+        this.originCoords = this.getLinestringFromLayer(this.selectedLayer).getGeometry().getCoordinates()
         this.joinLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(this.originCoords)
         this.applySelectedStyle(this.joinLayer)
         const start = this.originCoords[0]
@@ -228,9 +236,6 @@ export class TrackJoin {
     // this.deactivate()
   }
 
-  getLayerCoords(layer) {
-    return layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
-  }
   // TODO
   reset() {
   }

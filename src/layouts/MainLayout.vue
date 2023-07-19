@@ -13,7 +13,6 @@
 
         <q-toolbar-title>
           <!-- CUTTER -->
-          <q-icon name="terrain"></q-icon>
           <q-icon
             size="2em"
             name="content_cut"
@@ -87,7 +86,17 @@
 
           <!-- NODE INFO -->
         </q-toolbar-title>
+
         <div id="menu-icons" class="flex row">
+          <!-- OPEN FILE -->
+          <div>
+            <input type="file" id="actual-btn" hidden @change="readFile($event)"/>
+            <label for="actual-btn">
+              <q-icon class="menu-icon"  name="folder" size="2em"/>
+            </label>
+          </div>
+
+          <!-- ADD POINT FROM COORDS -->
           <div class="flex row">
             <q-icon class="menu-icon"  name="filter_tilt_shift" size="2em" @click="addPointClick=!addPointClick"/>
             <transition name="bounce">
@@ -100,26 +109,34 @@
             </transition>
           </div>
 
-          <div>
-            <input type="file" id="actual-btn" hidden @change="readFile($event)"/>
-            <label for="actual-btn">
-              <q-icon class="menu-icon"  name="folder" size="2em"/>
-            </label>
+          <!-- TERRAIN -->
+          <diV>
+            <q-icon
+              name="terrain"
+              square
+              size="2em"
+              class="menu-icon track-download"
+              :class="!activeLayerId?'disabled':''"
+              @click="showTrackProfile"
+            >
+            </q-icon>
           </div>
 
-          <!-- <div>
+          <!-- DOWNLOAD -->
+          <div>
             <q-icon
-              class="menu-icon"
-              :class="!activeLayerId?'disabled':''"
               name="file_download"
               square
               size="2em"
-              @click="downloadFile"
+              class="menu-icon track-download"
+              :class="!activeLayerId?'disabled':''"
+              @click.stop.prevent="downloadTrack"
             >
             </q-icon>
-          </div> -->
+          </diV>
+
         </div>
-        <!-- <div id="map-coords"></div> -->
+
       </q-toolbar>
     </q-header>
 
@@ -326,8 +343,8 @@ export default defineComponent({
       MAP.value.downloadGPX()
     }
 
-    const downloadTrack = (layerId) => {
-      MAP.value.downloadGPX(layerId)
+    const downloadTrack = () => {
+      MAP.value.downloadGPX(activeLayerId.value)
     }
 
     const selectedSegmentCreateTrack = async (payload) => {
@@ -346,11 +363,6 @@ export default defineComponent({
       MAP.value.drawPointFromGraphic(data)
     }
 
-    const trackProfile = (layerId) => {
-      MAP.value.trackProfile(layerId)
-      GRAPH.value.clearGraphSelection()
-    }
-
     const dragOnGraph = (payload) => {
       MAP.value.dragOnGraph(payload)
     }
@@ -359,15 +371,29 @@ export default defineComponent({
       MAP.value.fillTimeGaps()
     }
 
+    const showTrackProfile = () => {
+      const layerId = activeLayerId.value
+      context.emit('track-profile', layerId)
+      zoomToLayer(layerId)
+      setActiveLayer(layerId)
+      MAP.value.trackProfile(layerId)
+      GRAPH.value.clearGraphSelection()
+    }
+  
+    const setActiveLayer = (index) => {
+      $store.commit('main/activeLayerId', index)
+      $store.commit('main/setActiveLayer', index)
+    }
+
     return {
       GRAPH,
-      trackProfile,
+      downloadTrack,
+      showTrackProfile,
       fillTimeGaps,
       dragOnGraph,
       outGraphic,
       overGraphic,
       downloadFile,
-      downloadTrack,
       selectedSegmentCreateTrack,
       numberOfLayers,
       existsLayers,

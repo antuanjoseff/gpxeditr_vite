@@ -10,12 +10,10 @@
     >
       <template #item="{ element }">
         <div class="drag-item" :class="element.active?'active':''" @click="setActiveLayer(element.id)">
-          <q-item tag="div" v-ripple>
-            <q-item-section side top>
-              <div>
+          <q-item tag="div" v-ripple class="q-pr-xs" style="align-items: center;">
                 <q-icon
                   v-if="element.visible==true"
-                  class="toc-layer-icon"
+                  class="toc-layer-icon q-mr-sm"
                   name="visibility"
                   @click.stop.prevent="toggleVisibility(element, element.id)"
                 />
@@ -41,17 +39,12 @@
                       name="square"/>
                   </label>
                 </div>
-              </div>
-            </q-item-section>
-
-            <!-- <q-item-section side top>
-            </q-item-section> -->
 
             <q-item-section style="flex-grow: 5;">
               <div>
                 <q-item-label
                   caption
-                  class="zoom-in"
+                  class="zoom-in q-ml-md"
                   @doubleclick.prevent="setActiveLayer(element.id)"
                   @click.stop="zoomToLayer(element.id)"
                 >
@@ -59,30 +52,8 @@
                 </q-item-label>
               </div>
             </q-item-section>
-            <q-item-section style="flex-grow: 1;">
-              <diV>
-                <q-icon
-                  name="terrain"
-                  square
-                  color="brown"
-                  size="2em"
-                  class="track-download"
-                  @click="showTrackProfile(element.id)"
-                >
-                </q-icon>
-                <q-icon
-                  color="grey-14"
-                  name="file_download"
-                  square
-                  size="2em"
-                  class="track-download"
-                  @click.stop.prevent="downloadTrack(element.id)"
-                >
-                </q-icon>
-              </diV>
-            </q-item-section>
-
-            <q-item-section style="flex-grow: 1;" class="cursor-drag">
+            
+            <q-item-section style="flex-grow: 1;" class="cursor-drag text-right">
               <div class="cursor-drag">
                 <q-icon
                   class="toc-layer-icon cursor-drag handle"
@@ -186,30 +157,14 @@ export default defineComponent({
       }, 50)
     }
 
-    const downloadTrack = function (layerId) {
-      context.emit('download-track', layerId)
-    }
-
-    // const createTrack = (payload) => {
-    //   context.emit('create-track', payload)
-    // }
-
     const overGraphic = (data) => {
       context.emit('overGraphic', data)
     }
 
-    const showTrackProfile = (layerId) => {
-      context.emit('track-profile', layerId)
-      zoomToLayer(layerId)
-      setActiveLayer(layerId)
-    }
 
     return {
       data,
-      showTrackProfile,
       overGraphic,
-      // createTrack,
-      downloadTrack,
       draggable,
       over,
       startDrag,

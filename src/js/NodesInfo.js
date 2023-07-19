@@ -85,6 +85,14 @@ export class NodesInfo {
     })
   }
 
+  getLinestringFromLayer() {
+    const features = this.selectedLayer.getSource().getFeatures()
+    const linestring = features.find(f => {
+      return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
+    })
+    return linestring
+  }
+
   async activate() {
     var _this = this
     this.active = true
@@ -96,13 +104,14 @@ export class NodesInfo {
       this.layerSelector.on()
       this.map.once('layer-selected', async function(e){
         _this.selectedLayerId = e.layer.get('id')
+        _this.selectedLayer = e.layer        
         _this.layerSelector.off()
-        var coords = e.layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+        // var coords = e.layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+        var coords = _this.getLinestringFromLayer(_this.selectedLayer).getGeometry().getCoordinates()
         _this.initCoords = coords
         _this.nodesSource = _this.getNodesSource(coords)
         _this.nodesLayer.setSource(_this.nodesSource)
         _this.map.addLayer(_this.nodesLayer)
-        _this.selectedLayer = e.layer
         _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
         _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
         _this.sumUp(0, _this.initCoords.length - 1)
@@ -227,7 +236,7 @@ export class NodesInfo {
       var _this = this
       const hit = this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
         _this.selectedLayer = layer
-        var coords = layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+        var coords = _this.getLinestringFromLayer(layer).getGeometry().getCoordinates()
         _this.nodesSource = _this.getNodesSource(coords)
         return true
       }, { hitTolerance: 10, layerFilter: (l) => {return l.get('id') === _this.selectedLayerId} })

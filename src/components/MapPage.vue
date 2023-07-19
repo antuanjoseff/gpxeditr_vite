@@ -904,7 +904,12 @@ export default {
 
     const trackProfile = async (layerId) => {
       const layer = findLayer(layerId)
-      const coords = getCoords(layer)
+      const features = layer.getSource().getFeatures()
+      const linestring = features.find(f => {
+        return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
+      })
+     
+      const coords = linestring.getGeometry().getCoordinates()
       // map.value.map.once('track-info', showTrackData)
       tools.info.deactivate()
       tools.info.callback = showTrackData
