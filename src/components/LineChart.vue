@@ -349,16 +349,23 @@ export default defineComponent({
       document.getElementById('tooltip-footer').innerHTML = label
       document.getElementById('tooltip-header').innerHTML = eleData.formattedValue + ' m' + ' - ' + speedFormatted
 
-      if (eleData.element.x - tooltipHeaderWidth < chartArea.width){
-        document.getElementById('tooltip-header').style.marginLeft = (eleData.element.x - tooltipHeaderWidth/2)+'px'
+      const offset = 10
+      // TOOLTIP HEADER
+      if ( eleData.element.x - (tooltipHeaderWidth/2)  < (0 + offset  ) ){
+        document.getElementById('tooltip-header').style.marginLeft = offset +'px'
+      } else if ((tooltipHeaderWidth/2) + eleData.element.x < (canvas.width - offset ) ){
+        document.getElementById('tooltip-header').style.marginLeft = eleData.element.x - (tooltipHeaderWidth/2) +'px'
       } else {
-        document.getElementById('tooltip-header').style.marginLeft = (eleData.element.x - tooltipHeaderWidth) +'px'
+        document.getElementById('tooltip-header').style.marginLeft = (canvas.width - tooltipHeaderWidth - offset)+'px'
       }
 
-      if (eleData.element.x - tooltipFooterWidth/2 < chartArea.width){
-        document.getElementById('tooltip-footer').style.marginLeft = (eleData.element.x - tooltipFooterWidth/2) +'px'
+      // TOOLTIP FOOTER
+      if ( eleData.element.x - (tooltipFooterWidth/2)  < (0 + offset  ) ){
+        document.getElementById('tooltip-footer').style.marginLeft = offset +'px'
+      } else if ((tooltipFooterWidth/2) + eleData.element.x < (canvas.width - offset ) ){
+        document.getElementById('tooltip-footer').style.marginLeft = eleData.element.x - (tooltipFooterWidth/2) +'px'
       } else {
-        document.getElementById('tooltip-footer').style.marginLeft = (eleData.element.x - tooltipFooterWidth) +'px'
+        document.getElementById('tooltip-footer').style.marginLeft = (canvas.width - tooltipFooterWidth - offset)+'px'
       }
       emit('overGraphic', indexValue)
     }

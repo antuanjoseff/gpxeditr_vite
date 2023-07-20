@@ -9,7 +9,9 @@
       animation=450
     >
       <template #item="{ element }">
-        <div class="drag-item" :class="element.active?'active':''" @click="setActiveLayer(element.id)">
+        <div class="drag-item" 
+        :class="activeLayerId==element.id || element.active?'active':''" @click="setActiveLayer(element.id)"
+        >
           <q-item tag="div" v-ripple class="q-pr-xs" style="align-items: center;">
                 <q-icon
                   v-if="element.visible==true"
@@ -111,6 +113,10 @@ export default defineComponent({
       }
     })
 
+    const activeLayerId = computed(() => {
+      return $store.getters['main/activeLayerId']
+    })
+
     const toggleVisibility = (layer, layerId) => {
       context.emit('toggleLayer', layerId)
     }
@@ -164,6 +170,7 @@ export default defineComponent({
 
     return {
       data,
+      activeLayerId,
       overGraphic,
       draggable,
       over,

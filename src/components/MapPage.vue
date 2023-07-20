@@ -313,8 +313,6 @@ export default {
         // Add waypoints to last GPX segment
         const layer = findLayer(layerCounter)
         layer.getSource().addFeatures(waypoints)  
-      
-
       } catch (er) {
         console.log(er)
       }
@@ -384,6 +382,7 @@ export default {
 
       map.value.map.addLayer(vectorLayer)
       $store.commit('main/numLayers', numberOfLayers)
+      $store.commit('main/activeLayerId', layerId)      
       // Better extend map to fit new layer
       map.value.map.getView().fit(vectorSource.getExtent())
     }
