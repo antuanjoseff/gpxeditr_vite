@@ -128,16 +128,22 @@ export default {
       })
     }
 
-    const crossStyle = new Style({
-      image: new RegularShape({
-        fill: new Fill({color: 'red'}),
-        stroke: new Stroke({color: 'black', width: 2}),
-        points: 4,
-        radius: 10,
-        radius2: 0,
-        angle: Math.PI / 4
+    const crossStyle = (f) => {
+      return new Style({
+        ZIndex: 20,
+        image: new Icon({
+          anchor: [0, 1],
+          src: 'flag.svg',
+          scale: [0.05, 0.05]        
+        }),
+        text: new Text({
+          text: f.get('name'),
+          offsetY : 10,
+          offsetX: 5
+        })
       })
-    })
+    }
+
 
     const selectedStyle = new Style({
       fill: new Fill({
@@ -236,8 +242,11 @@ export default {
 
     const changeColor = function (layerId, color) {
       const layer = findLayer(layerId)
-      layer.getStyle().getStroke().setColor(color)
-      layer.setStyle(layer.getStyle())
+      const lineString = getLinestringFromTrack(layer.getSource().getFeatures())
+      lineString.getStyle().getStroke().setColor(color)
+      lineString.setStyle(lineString.getStyle())
+      // layer.getStyle().getStroke().setColor(color)
+      // layer.setStyle(layer.getStyle())
       $store.commit('main/changeLayerColor', {
         layerId,
         color
@@ -267,7 +276,7 @@ export default {
       map.value.render()
     }
 
-    const addGpxLayerFromFile = function (contents, filename) {
+    const addTrackFromFile = function (contents, filename) {
       try {
         var waypoints = [], featureStyle
 
@@ -275,41 +284,34 @@ export default {
           dataProjection: 'EPSG:4326',
           featureProjection: 'EPSG:3857'
         })
-        features.map((e)=>{
-          const type = e.getGeometry().getType().toLowerCase()
+        features.map((f)=>{
+          const type = f.getGeometry().getType().toLowerCase()
           if (type === 'point') {
-            featureStyle = crossStyle
-            waypoints.push(e)
+            featureStyle = crossStyle(f)
+            f.setStyle(featureStyle)
+            waypoints.push(f)
           } else {
             if (type.indexOf('linestring') > -1) {
-              featureStyle = styleLine(e)
+              // featureStyle = styleLine(e)
+              var counter = 0
+
+              if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
+                const lns = f.getGeometry().getLineStrings()
+                var name = filename
+                lns.forEach((linestring) => {
+                  addTrack(linestring, 'linestring', filename )
+                  filename = name + '(' + counter++ + ')'
+                })
+              }  else {
+                if (f.getGeometry().getType().toLowerCase() === 'linestring') {
+                  addTrack(f.getGeometry(), 'linestring', filename )
+                  filename = name + '(' + counter++ + ')'
+                }
+              }
             }
           }
-          e.setStyle(featureStyle)
         })
 
-        var counter = 0
-        for (var idx = 0; idx < features.length; idx++) {
-          var f = features[idx]
-          if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
-            const lns = f.getGeometry().getLineStrings()
-            var name = filename
-            lns.forEach((linestring) => {
-              addLayerFromFeature(linestring, 'linestring', filename )
-              filename = name + '(' + counter++ + ')'
-            })
-          }  else {
-            if (f.getGeometry().getType().toLowerCase() === 'linestring') {
-              addLayerFromFeature(f.getGeometry(), 'linestring', filename )
-              filename = name + '(' + counter++ + ')'
-            }
-          }
-          // else {
-          //   if (f.getGeometry().getType().toLowerCase() === 'point') {
-          //     addLayerFromFeature(f.getGeometry().getCoordinates(), 'point', filename)
-          //   }
-          // }
-        }
         // Add waypoints to last GPX segment
         const layer = findLayer(layerCounter)
         layer.getSource().addFeatures(waypoints)  
@@ -318,41 +320,31 @@ export default {
       }
     }
 
-    const addLayerFromFeature = (geom, type, filename) => {
+    const addTrack = (geom, type, filename) => {
       var layerStyle
       var vectorSource
       let dist = 0
       let nCoords = 0
 
-      if (type === 'point') {
-        layerStyle = crossStyle
-        vectorSource = new VectorSource({
-          features: [
-            new Feature({
-              geometry: new Point(geom),
-            })
-          ]
+      if (type === 'linestring') {
+        layerStyle = styleLine()
+        const f = new Feature({
+          geometry: geom
         })
-      } else {
-        if (type === 'linestring') {
-          layerStyle = styleLine()
-          vectorSource = new VectorSource({
-            features: [
-              new Feature({
-                geometry: geom
-              })
-            ]
-          })
-          // Get length in meters, and number of nodes
-          var coords = vectorSource.getFeatures()[0].getGeometry().getCoordinates()
-          for (var index = 1; index < coords.length; index++) {
-            const p1 = coords[index - 1]
-            const p2 = coords[index]
-            dist += Distance(p1, p2)
-            nCoords++
-          }
+        f.setStyle(styleLine(f))
+
+        vectorSource = new VectorSource({
+          features: [ f ]
+        })
+        // Get length in meters, and number of nodes
+        var coords = vectorSource.getFeatures()[0].getGeometry().getCoordinates()
+        for (var index = 1; index < coords.length; index++) {
+          const p1 = coords[index - 1]
+          const p2 = coords[index]
+          dist += Distance(p1, p2)
+          nCoords++
         }
-      }
+      }    
 
       const layerId = newLayerId()
       // Do not count base layer
@@ -364,8 +356,6 @@ export default {
         dist: dist,
         nCoords: nCoords,
         source: vectorSource,
-        style: layerStyle,
-        // style: directionStyle,
         zIndex: (type==='point')?(layerId*20):''
       })
 
@@ -508,9 +498,9 @@ export default {
               id: layerID,
               source: vectorSource,
             })
-
+          console.log(layerID)
           map.value.map.addLayer(vectorLayer);
-          // $store.commit('main/addLayerIds',  layerID)
+          $store.commit('main/activeLayerId',  layerID)
           $store.commit('main/addLayerToTOC', {
             id: layerID,
             label: filename,
@@ -614,7 +604,7 @@ export default {
     const listenDrawnParts = (e) => {
       if (e.finished){
         var geom = new LineString(e.coords)
-        addLayerFromFeature(geom, 'linestring', 'Drawn layer')
+        addTrack(geom, 'linestring', 'Drawn layer')
         tools.draw.reset()
         $store.commit('main/numberOfDrawnParts', 0)
       } else {
@@ -874,7 +864,7 @@ export default {
           $store.commit('main/numberOfDrawnParts', numberOfCoords)
         },
         callbackDrawFeaure: function (linestring) {
-          addLayerFromFeature(linestring, 'linestring', 'drawn track')
+          addTrack(linestring, 'linestring', 'drawn track')
         }
       })
       tools.handDraw = handDraw
@@ -899,6 +889,13 @@ export default {
     function flyTo (location) {
       const duration = 2000
       map.value.map.getView().animate({ center: location, duration: duration })
+    }
+
+    const getLinestringFromTrack = (features) => {
+      const lineString = features.find(f => {
+        return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
+      })
+      return lineString
     }
 
     const trackProfile = async (layerId) => {
@@ -1018,7 +1015,7 @@ export default {
       activeCutter,
       addPoint,
       reorderLayers,
-      addGpxLayerFromFile,
+      addTrackFromFile,
       changeColor,
       toggleLayer,
       zoomToLayer,
