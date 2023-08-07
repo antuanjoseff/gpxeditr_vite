@@ -20,6 +20,7 @@ export class LayerSelector {
     this.excludeLayerIds = this.options.excludeLayerIds || []
     this.color = undefined
     this.width = undefined
+    this.selectedFeature
   }
 
   on() {
@@ -62,25 +63,30 @@ export class LayerSelector {
     setTimeout(async () => {
       var _this = this
       if (_this.pause) return
-
+      var selectedFeature
       const hit = this.map.forEachFeatureAtPixel(
         e.pixel,
         function (feature, layer) {
           // AVOID SELECTING A LAYER WHEHN ANOTHER ONE IS ALREADY SELECTED
+          _this.selectedFeature = feature
           if (_this.previousSelectedId && _this.previousSelectedId != layer.get('id')){
             return false
           }
           if (!_this.previousSelectedId) {
             _this.previousSelectedId = layer.get('id')
-            _this.color = layer.getStyle().getStroke().getColor()
-            _this.width = layer.getStyle().getStroke().getWidth()
-            _this.selectedLayer = layer
+            if (_this.isLineString(feature)) {
+              _this.color = feature.getStyle().getStroke().getColor()
+              _this.width = feature.getStyle().getStroke().getWidth()
+              _this.selectedLayer = layer
+            }
           } else {
             if (_this.previousSelectedId != layer.get('id')){
               _this.previousSelectedId = layer.get('id')
-              _this.color = layer.getStyle().getStroke().getColor()
-              _this.width = layer.getStyle().getStroke().getWidth()
-              _this.selectedLayer = layer
+              if (_this.isLineString(feature)) {
+                _this.color = feature.getStyle().getStroke().getColor()
+                _this.width = feature.getStyle().getStroke().getWidth()
+                _this.selectedLayer = layer
+              }
             }
           }
           return true
@@ -95,9 +101,19 @@ export class LayerSelector {
 
       if (hit) {
           this.map.getTargetElement().style.cursor = 'pointer'
-          this.selectedLayer.setStyle(selectStyle)
+          _this.selectedFeature.setStyle(selectStyle)
       } else {
           this.previousSelectedId = undefined
+          if (_this.selectedFeature) {
+            _this.selectedFeature.setStyle(
+              new Style({
+                stroke: new Stroke({
+                  color: _this.color,
+                  width: _this.width
+                })
+              })
+            )
+          }
           this.map.getTargetElement().style.cursor = ''
           if (this.selectedLayer) {
             this.selectedLayer.setStyle(
@@ -114,4 +130,8 @@ export class LayerSelector {
         _this.throttleTimer = false
       }, this.throttleTime)
     }
+
+  isLineString(f){
+    return f.getGeometry().getType().toLowerCase().indexOf('linestring') !== -1
+  }
 }

@@ -70,6 +70,7 @@ export class TrackInvers {
     this.width = undefined
     this.pointermoveBinde = undefined
     this.clickBinder = undefined
+    this.layerSelector.off()
     unByKey(this.bindFunction)
   }
 
