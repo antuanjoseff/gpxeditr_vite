@@ -317,7 +317,7 @@ export default defineComponent({
       const reader = new FileReader();
       reader.onload = function(e) {
         var contents = e.target.result;
-        MAP.value.addTrackFromFile(contents, file.name)
+        MAP.value.addTrackFromFile(MAP.value.map, $store, contents, file.name)
       };
       reader.readAsText(file);
     }

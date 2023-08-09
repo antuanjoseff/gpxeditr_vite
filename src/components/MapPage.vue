@@ -74,23 +74,20 @@ import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
 import {Style, Fill, Icon, Text, Stroke, RegularShape, Circle} from 'ol/style';
 import GPX from 'ol/format/GPX.js';
-import OSMXML from 'ol/format/OSMXML.js';
-import DragAndDrop from 'ol/interaction/DragAndDrop.js';
 import { Colors, setRandomcolor } from '../js/colors.js';
+import { DragTrackFile } from '../js/DragTrackFile';
 import { TrackCutter } from '../js/TrackCutter.js';
 import { TrackInvers } from '../js/TrackInvers.js';
 import { TrackJoin } from '../js/TrackJoin.js';
 import { NodesInfo } from '../js/NodesInfo.js';
 import { DrawTrack } from '../js/DrawTrack.js';
 import { HandDraw } from '../js/HandDraw.js';
-import { Distance } from '../js/utils.js';
 import Feature from 'ol/Feature.js';
 import Point from 'ol/geom/Point.js';
 import LineString from 'ol/geom/LineString.js';
-import MultiLineString from 'ol/geom/MultiLineString.js';
 import { transform, transformExtent } from 'ol/proj.js'
 import {containsXY} from 'ol/extent';
-
+import { addTrack, addTrackFromFile } from '../js/maputils.js'
 export default {
   setup() {
     let activeLayerCoords = undefined
@@ -143,7 +140,6 @@ export default {
         })
       })
     }
-
 
     const selectedStyle = new Style({
       fill: new Fill({
@@ -276,107 +272,6 @@ export default {
       map.value.render()
     }
 
-    const addTrackFromFile = function (contents, filename) {
-      try {
-        var waypoints = [], featureStyle
-
-        var features = new GPX().readFeatures(contents, {
-          dataProjection: 'EPSG:4326',
-          featureProjection: 'EPSG:3857'
-        })
-        features.map((f)=>{
-          const type = f.getGeometry().getType().toLowerCase()
-          if (type === 'point') {
-            featureStyle = crossStyle(f)
-            f.setStyle(featureStyle)
-            waypoints.push(f)
-          } else {
-            if (type.indexOf('linestring') > -1) {
-              // featureStyle = styleLine(e)
-              var counter = 0
-
-              if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
-                const lns = f.getGeometry().getLineStrings()
-                var name = filename
-                lns.forEach((linestring) => {
-                  addTrack(linestring, 'linestring', filename )
-                  filename = name + '(' + counter++ + ')'
-                })
-              }  else {
-                if (f.getGeometry().getType().toLowerCase() === 'linestring') {
-                  addTrack(f.getGeometry(), 'linestring', filename )
-                  filename = name + '(' + counter++ + ')'
-                }
-              }
-            }
-          }
-        })
-
-        // Add waypoints to last GPX segment
-        const layer = findLayer(layerCounter)
-        layer.getSource().addFeatures(waypoints)  
-      } catch (er) {
-        console.log(er)
-      }
-    }
-
-    const addTrack = (geom, type, filename) => {
-      var layerStyle
-      var vectorSource
-      let dist = 0
-      let nCoords = 0
-
-      if (type === 'linestring') {
-        layerStyle = styleLine()
-        const f = new Feature({
-          geometry: geom
-        })
-        f.setStyle(styleLine(f))
-
-        vectorSource = new VectorSource({
-          features: [ f ]
-        })
-        // Get length in meters, and number of nodes
-        var coords = vectorSource.getFeatures()[0].getGeometry().getCoordinates()
-        for (var index = 1; index < coords.length; index++) {
-          const p1 = coords[index - 1]
-          const p2 = coords[index]
-          dist += Distance(p1, p2)
-          nCoords++
-        }
-      }    
-
-      const layerId = newLayerId()
-      // Do not count base layer
-      const numberOfLayers = map.value.map.getLayers().values_.length  - 1
-
-      const vectorLayer = new VectorLayer({
-        id: layerId,
-        name: filename,
-        dist: dist,
-        nCoords: nCoords,
-        source: vectorSource,
-        zIndex: (type==='point')?(layerId*20):''
-      })
-
-      if (type !== 'point') {
-        $store.commit('main/addLayerToTOC', {
-          id: layerId,
-          label: filename,
-          visible: true,
-          active: false,
-          color: gColors.getColor(),
-          zindex: numberOfLayers
-        })
-      }
-
-      map.value.map.addLayer(vectorLayer)
-      $store.commit('main/numLayers', numberOfLayers)
-      $store.commit('main/activeLayerId', layerId)      
-      // Better extend map to fit new layer
-      map.value.map.getView().fit(vectorSource.getExtent())
-    }
-
     const addPoint = function (coords) {
       coords.reverse()
       var f = new Feature({
@@ -434,23 +329,42 @@ export default {
       })
     }
 
-    function addDragDropInteraction() {
-      dragAndDropInteraction = new DragAndDrop({
-        formatConstructors: [
-          GPX,
-          OSMXML
-        ],
-      });
+
+    // function addDragDropInteraction() {
+    //   dragAndDropInteraction = new DragAndDrop({
+    //     formatConstructors: [
+    //       GPX,
+    //       OSMXML
+    //     ],
+    //   });
       
-      map.value.map.addInteraction(dragAndDropInteraction);
-    }
+    //   map.value.map.addInteraction(new TrackOpener());
+    // }
+    
 
       // --------------------------------------
       // LOAD GPX
       // --------------------------------------
+    const addTrackCallback = (layerId, filename, layerExtent, layerColor) => {
+      console.log('ADD TRACK')
+      $store.commit('main/activeLayerId',  layerId)
+      $store.commit('main/addLayerToTOC', {
+        id: layerId,
+        label: filename,
+        visible: true,
+        active: false,
+        color: layerColor,
+        zindex: map.value.map.getLayers().values_.length
+      })
+      map.value.map.getView().fit(layerExtent)
+    }
 
     onMounted(() => {
       // Add markers empty layer
+      const MAP = map.value.map
+      const draggerFile = new DragTrackFile(MAP, addTrackCallback)
+      draggerFile.on()
+
       map.value.map.getViewport().addEventListener('contextmenu', function (evt) {
         evt.preventDefault();
         rightClickCoords = map.value.map.getEventCoordinate(evt)
@@ -472,49 +386,6 @@ export default {
       })
 
       coordsContainer.value = document.getElementById('map-coords')
-      addDragDropInteraction()
-      
-      dragAndDropInteraction.on('addfeatures', function (event) {
-        try{
-          const filename = event.file.name
-          var featureStyle
-          event.features.map((e)=>{
-            const type = e.getGeometry().getType().toLowerCase()
-            if (type === 'point') {
-              featureStyle = crossStyle
-            } else {
-              if (type.indexOf('linestring') > -1) {
-                featureStyle = styleLine(e)
-              }
-            }
-            e.setStyle(featureStyle)
-          })
-
-          const vectorSource = new VectorSource({
-            features: event.features,
-          });
-          const layerID = newLayerId()
-          const vectorLayer = new VectorLayer({
-              id: layerID,
-              source: vectorSource,
-            })
-          console.log(layerID)
-          map.value.map.addLayer(vectorLayer);
-          $store.commit('main/activeLayerId',  layerID)
-          $store.commit('main/addLayerToTOC', {
-            id: layerID,
-            label: filename,
-            // layer: vectorLayer,
-            visible: true,
-            active: false,
-            color: gColors.getColor(),
-            zindex: map.value.map.getLayers().values_.length
-          })
-          map.value.map.getView().fit(vectorSource.getExtent());
-        } catch (e) {
-          console.log(e)
-        }
-      });      
       initTools()
     })
 
