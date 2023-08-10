@@ -109,6 +109,7 @@ export default defineComponent({
           const points = chart.getElementsAtEventForMode(evt, 'index', {
             intersect: false
           })
+          if (!points.length) return
           startIndex = points[0].index;
           const rect = canvas.getBoundingClientRect()
           selectionRect.startX = evt.clientX - rect.left
@@ -138,6 +139,7 @@ export default defineComponent({
               const points = chart.getElementsAtEventForMode(evt, 'index', {
                 intersect: false
               })
+              if (!points.length) return
               endIndex = points[0].index;
               const rect = canvas.getBoundingClientRect();
               selectionRect.w = (evt.clientX - rect.left) - selectionRect.startX;
