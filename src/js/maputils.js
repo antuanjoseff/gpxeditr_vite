@@ -4,6 +4,7 @@ import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
 import Feature from 'ol/Feature.js';
 import { Distance } from './utils.js';
+import {Group as LayerGroup } from 'ol/layer.js'
 
 const addTrack = (MAP, $store, geom, type, filename) => {
     var layerStyle
@@ -34,18 +35,39 @@ const addTrack = (MAP, $store, geom, type, filename) => {
     addNewLayerToMap(MAP, $store, filename, dist, nCoords, vectorSource)
 }
 
+const newLayerId = (MAP) => {
+  return MAP.getLayers().array_.length + 1
+}
+
+const lastLayerId = (MAP) => {
+  return MAP.getLayers().array_.length
+}
+
+
 const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) => {
-    const layerId = MAP.getLayers().length + 1
-    
-    const vectorLayer = new VectorLayer({
+    const layerId = newLayerId(MAP)
+    const layerGroup = new LayerGroup({
         id: layerId,
         name: filename,
         dist: dist,
         nCoords: nCoords,
-        source: vectorSource
+        layers: [
+          // TRACK
+          new VectorLayer({
+            id: 'track',
+            source: vectorSource
+          }),
+          // WAYPOINTS
+          new VectorLayer({
+            id: 'waypoints',
+            source: new VectorSource({
+              features: []
+            })
+          })    
+        ]
     })
     var c = vectorSource.getFeatures()[0].getStyle().getStroke().getColor()
-    console.log(c)
+    
     $store.commit('main/addLayerToTOC', {
         id: layerId,
         label: filename,
@@ -55,20 +77,20 @@ const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) =>
         zindex: layerId
     })
 
-    MAP.addLayer(vectorLayer)
+    MAP.addLayer(layerGroup)
     $store.commit('main/numLayers', layerId)
     $store.commit('main/activeLayerId', layerId)
     // Better extend map to fit new layer
     MAP.getView().fit(vectorSource.getExtent())    
 }
 
-const addTrackFromFile= (mapRef, $store, contents, filename) => {
-    console.log(mapRef.map)
-    
-    var MAP = mapRef.map
+  const addTrackFromFile= (MAP, $store, contents, filename) => {
+    var pointFeatures = [], trackFeature = []
+
+    // var MAP = mapRef.map
     try {
       var waypoints = [], featureStyle
-  
+
       var features = new GPX().readFeatures(contents, {
         dataProjection: 'EPSG:4326',
         featureProjection: 'EPSG:3857'
@@ -83,7 +105,7 @@ const addTrackFromFile= (mapRef, $store, contents, filename) => {
           if (type.indexOf('linestring') > -1) {
             // featureStyle = styleLine(e)
             var counter = 0
-  
+
             if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
               const lns = f.getGeometry().getLineStrings()
               var name = filename
@@ -100,13 +122,25 @@ const addTrackFromFile= (mapRef, $store, contents, filename) => {
           }
         }
       })
-  
+
       // Add waypoints to last GPX segment
-    //   const layer = findLayer(layerCounter)
-    //   layer.getSource().addFeatures(waypoints)  
+      if (waypoints.length) {     
+        const lastId = lastLayerId(MAP)
+        const layerGroup = findLayer(MAP, lastId)
+        const waypointsLayer = layerGroup.getLayers().array_.find(l => {
+          return l.get('id').toLowerCase() === 'waypoints'
+        })
+        waypointsLayer.getSource().addFeatures(waypoints)  
+      }
     } catch (er) {
       console.log(er)
     }
   }
 
-  export { addTrack, addTrackFromFile }
+  const findLayer = function (MAP, id) {
+    return MAP.getLayers().array_.find((layer) => {
+      return layer.get('id') == id
+    })
+  }
+
+  export { addTrack, addTrackFromFile, findLayer }

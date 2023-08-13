@@ -289,8 +289,8 @@ export default defineComponent({
       MAP.value.changeColor(data.layerId, data.color)
     }
 
-    const toggleLayer = function (layerId) {
-      MAP.value.toggleLayer(layerId)
+    const toggleLayer = function (obj) {
+      MAP.value.toggleLayer(obj.layerId, obj.waypoints)
     }
 
     const zoomToLayer = function (layerId) {
@@ -317,7 +317,8 @@ export default defineComponent({
       const reader = new FileReader();
       reader.onload = function(e) {
         var contents = e.target.result;
-        MAP.value.addTrackFromFile(MAP.value.map, $store, contents, file.name)
+        // MAP.value.addTrackFromFile(MAP.value.map, $store, contents, file.name)
+        MAP.value.openFile(contents, file.name)
       };
       reader.readAsText(file);
     }

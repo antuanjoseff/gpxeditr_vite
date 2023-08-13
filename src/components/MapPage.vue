@@ -237,29 +237,34 @@ export default {
     }
 
     const changeColor = function (layerId, color) {
-      const layer = findLayer(layerId)
-      const lineString = getLinestringFromTrack(layer.getSource().getFeatures())
+      const layerGroup = findLayer(layerId)
+      const trackLayer = getLayerFromLayerGroup(layerGroup, 'track')
+      const lineString = getLinestringFromTrack(trackLayer.getSource().getFeatures())
       lineString.getStyle().getStroke().setColor(color)
       lineString.setStyle(lineString.getStyle())
-      // layer.getStyle().getStroke().setColor(color)
-      // layer.setStyle(layer.getStyle())
       $store.commit('main/changeLayerColor', {
         layerId,
         color
       })
     }
 
-    const toggleLayer = function (layerId) {
-      const layer = findLayer(layerId)
-      layer.setVisible(!layer.getVisible())
-      $store.commit('main/toggleLayer', {
-        layerId,
-        visible: layer.getVisible()
-      })
+    const toggleLayer = function (layerId, waypoints) {
+      const layerGroup = findLayer(layerId)
+      if (!waypoints) {
+        layerGroup.setVisible(!layerGroup.getVisible())
+        $store.commit('main/toggleLayer', {
+          layerId,
+          visible: layerGroup.getVisible()
+        })
+      } else {
+        const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
+        waypointsLayer.setVisible(!waypointsLayer.getVisible())
+      }
     }
 
     const zoomToLayer = function (layerId) {
-      const layer = findLayer(layerId)
+      const layerGroup = findLayer(layerId)
+      const layer = getLayerFromLayerGroup(layerGroup, 'track')
       map.value.map.getView().fit(layer.getSource().getExtent(), { duration: 1000 });
     }
 
@@ -346,7 +351,7 @@ export default {
       // LOAD GPX
       // --------------------------------------
     const addTrackCallback = (layerId, filename, layerExtent, layerColor) => {
-      console.log('ADD TRACK')
+      console.log(layerId)
       $store.commit('main/activeLayerId',  layerId)
       $store.commit('main/addLayerToTOC', {
         id: layerId,
@@ -371,11 +376,11 @@ export default {
       })
 
       $store.commit('main/setZoom', Math.floor(map.value.map.getView().getZoom()))
-      markersLayer = new VectorLayer({
-        source: new VectorSource(),
-        style: crossStyle
-      });
-      map.value.map.addLayer(markersLayer)
+      // markersLayer = new VectorLayer({
+      //   source: new VectorSource(),
+      //   style: crossStyle
+      // });
+      // map.value.map.addLayer(markersLayer)
 
       map.value.map.on('moveend', updateViewState)
       // map.value.map.on('pointermove', checkPointerMove)
@@ -498,7 +503,8 @@ export default {
 
     const activateNodesInfo = () => {
       if (activeLayerId.value) {
-        const layer = findLayer(activeLayerId.value)
+        const layerGroup = findLayer(activeLayerId.value)
+        const layer = getLayerFromLayerGroup(layerGroup, 'track')        
         const coords = getCoords(layer)
         tools.info.initCoords = coords
         tools.info.selectedLayerId = activeLayerId.value
@@ -770,7 +776,8 @@ export default {
     }
 
     const trackProfile = async (layerId) => {
-      const layer = findLayer(layerId)
+      const layerGroup = findLayer(layerId)
+      const layer = getLayerFromLayerGroup(layerGroup, 'track')      
       const features = layer.getSource().getFeatures()
       const linestring = features.find(f => {
         return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
@@ -786,11 +793,23 @@ export default {
     }
 
     watch(activeLayerId, ( newValue, oldValue ) => {
-      const l = findLayer(newValue)
-      if (newValue){
-        activeLayerCoords = getCoords(findLayer(newValue))
+      console.log(newValue)
+      const layerGroup = findLayer(newValue)
+      if (layerGroup) {
+        const trackLayer = getLayerFromLayerGroup(layerGroup, 'track')
+        if (newValue){
+          activeLayerCoords = getCoords(trackLayer)
+        }
       }
     })
+
+    const getLayerFromLayerGroup = (layerGroup, group) => {
+      var trackLayer = null
+      trackLayer = layerGroup.getLayers().array_.find(l => {
+        return l.get('id') === group
+      })
+      return trackLayer
+    }
 
     const dragOnGraph = ( { startIndex, endIndex }) => {
       let coords
@@ -862,8 +881,13 @@ export default {
       }
     }
 
+    const openFile = (contents, filename) => {
+      addTrackFromFile(map.value.map, $store, contents, filename)
+    }
+
     return {
       doSubmit,
+      openFile,
       waypointName,
       addWayPoint,
       addWaypointStart,

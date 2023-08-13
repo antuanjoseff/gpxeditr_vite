@@ -1,10 +1,11 @@
-import { Colors } from './colors.js';
-import GPX from 'ol/format/GPX.js';
-import OSMXML from 'ol/format/OSMXML.js';
-import DragAndDrop from 'ol/interaction/DragAndDrop.js';
-import VectorLayer from 'ol/layer/Vector.js';
-import VectorSource from 'ol/source/Vector.js';
-import {Style, Icon, Text, Stroke} from 'ol/style';
+import { Colors } from './colors.js'
+import GPX from 'ol/format/GPX.js'
+import OSMXML from 'ol/format/OSMXML.js'
+import DragAndDrop from 'ol/interaction/DragAndDrop.js'
+import {Group as LayerGroup } from 'ol/layer.js'
+import VectorLayer from 'ol/layer/Vector.js'
+import VectorSource from 'ol/source/Vector.js'
+import {Style, Icon, Text, Stroke} from 'ol/style'
 
 const crossStyle = (f) => {
   return new Style({
@@ -45,30 +46,47 @@ export class DragTrackFile {
         try{
           const filename = event.file.name
           var featureStyle
+          var pointFeatures = [], trackFeature = []
+          var trackExtent
 
-          event.features.map((e)=>{
-            const type = e.getGeometry().getType().toLowerCase()
+          event.features.map((f)=>{
+            const type = f.getGeometry().getType().toLowerCase()
             if (type === 'point') {
               featureStyle = crossStyle
+              f.setStyle(featureStyle)
+              pointFeatures.push(f)
             } else {
               if (type.indexOf('linestring') > -1) {
-                featureStyle = _this.styleLine(e)
+                trackExtent = f.getGeometry().getExtent()
+                featureStyle = _this.styleLine(f)
+                f.setStyle(featureStyle)
+                trackFeature.push(f)                
               }
             }
-            e.setStyle(featureStyle)
           })
     
-          const vectorSource = new VectorSource({
-            features: event.features,
-          });
           const layerId = _this.newLayerId()
-          const vectorLayer = new VectorLayer({
-              id: layerId,
-              source: vectorSource,
-            })
-
-          _this.map.addLayer(vectorLayer);
-          _this.callback(layerId, filename, vectorSource.getExtent(), _this.colors.getColor() )
+          const trackLayer = new LayerGroup({
+            id: layerId,
+            layers: [
+              // TRACK
+              new VectorLayer({
+                id: 'track',
+                source: new VectorSource({
+                  features: trackFeature
+                })
+              }),
+              // WAYPOINTS
+              new VectorLayer({
+                id: 'waypoints',
+                source: new VectorSource({
+                  features: pointFeatures
+                })
+              })    
+            ]
+          })
+          _this.map.addLayer(trackLayer);
+          _this.callback(layerId, filename, trackExtent, _this.colors.getColor() )
 
         } catch (e) {
           console.log(e)
@@ -77,7 +95,7 @@ export class DragTrackFile {
     }    
 
     newLayerId() {
-      return this.map.getLayers().count + 1
+      return this.map.getLayers().array_.length + 1
     }
 
     styleLine() {

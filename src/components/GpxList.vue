@@ -25,6 +25,11 @@
                   name="visibility_off"
                   @click.stop.prevent="toggleVisibility(element, element.id)"
                 />
+                <q-icon
+                  class="toc-layer-icon"
+                  name="flag"
+                  @click.stop.prevent="toggleVisibility(element, element.id, 'waypoints')"
+                />                
                 <div @click.stop>
                   <div>
                     <input
@@ -117,8 +122,8 @@ export default defineComponent({
       return $store.getters['main/activeLayerId']
     })
 
-    const toggleVisibility = (layer, layerId) => {
-      context.emit('toggleLayer', layerId)
+    const toggleVisibility = (layer, layerId, waypoints=false) => {
+      context.emit('toggleLayer', { layerId, waypoints })
     }
 
     const zoomToLayer = (layerId) => {
