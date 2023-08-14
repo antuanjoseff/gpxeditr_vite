@@ -71,12 +71,14 @@ export class TrackCutter {
       if (_this.pause) return
       const hit = this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
         _this.layerToCut = layer
-        _this.selectedLayerId = layer.get('id')
-        _this.initCoords = _this.getLinestringFromLayerToCut().getGeometry().getCoordinates()
+        _this.selectedLayerId = layer.get('parentId')
+        _this.initCoords = layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+        console.log(_this.initCoords)
         _this.nodesLayer = _this.getNodesLayer(_this.initCoords)
 
         var mouseCoord = _this.map.getCoordinateFromPixel(e.pixel)
         var snapped =_this.nodesLayer.getSource().getClosestFeatureToCoordinate(mouseCoord)
+        console.log(mouseCoord)
         var fIndex = snapped.get('id')
         var cNew = _this.initCoords.slice(0, fIndex)
         _this.headCoords = _this.initCoords.slice(0, fIndex)
@@ -84,7 +86,8 @@ export class TrackCutter {
 
         _this.segmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(cNew)
         return true
-      }, { hitTolerance: 10, layerFilter: (l) => {return l.get('id') !== 'segment'}})
+      }, { hitTolerance: 10, layerFilter: (l) => {return l.get('type') === 'track'}})
+
       if (hit) {
         this.map.getTargetElement().style.cursor = 'pointer'
       } else {
@@ -98,11 +101,11 @@ export class TrackCutter {
   }
 
   getLinestringFromLayerToCut() {
-    const features = this.layerToCut.getSource().getFeatures()
-    const linestring = features.find(f => {
-      return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
-    })
-    return linestring
+    return this.layerToCut.getSource().getFeatures()[0]
+    // const linestring = features.find(f => {
+    //   return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
+    // })
+    // return linestring
   }
 
   done() {

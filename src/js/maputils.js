@@ -13,11 +13,9 @@ const addTrack = (MAP, $store, geom, type, filename) => {
     let nCoords = 0
 
     if (type === 'linestring') {
-        layerStyle = styleLine()
         const f = new Feature({
             geometry: geom
         })
-        f.setStyle(styleLine(f))
 
         vectorSource = new VectorSource({
             features: [ f ]
@@ -46,27 +44,32 @@ const lastLayerId = (MAP) => {
 
 const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) => {
     const layerId = newLayerId(MAP)
+    const newStyle = styleLine()
     const layerGroup = new LayerGroup({
         id: layerId,
+        type: 'group',
         name: filename,
         dist: dist,
         nCoords: nCoords,
         layers: [
           // TRACK
           new VectorLayer({
-            id: 'track',
-            source: vectorSource
+            parentId: layerId,
+            type: 'track',
+            source: vectorSource,
+            style: newStyle
           }),
           // WAYPOINTS
           new VectorLayer({
-            id: 'waypoints',
+            parentId: layerId,
+            type: 'waypoints',
             source: new VectorSource({
               features: []
             })
           })    
         ]
     })
-    var c = vectorSource.getFeatures()[0].getStyle().getStroke().getColor()
+    var c = newStyle.getStroke().getColor()
     
     $store.commit('main/addLayerToTOC', {
         id: layerId,
@@ -128,7 +131,7 @@ const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) =>
         const lastId = lastLayerId(MAP)
         const layerGroup = findLayer(MAP, lastId)
         const waypointsLayer = layerGroup.getLayers().array_.find(l => {
-          return l.get('id').toLowerCase() === 'waypoints'
+          return l.get('type').toLowerCase() === 'waypoints'
         })
         waypointsLayer.getSource().addFeatures(waypoints)  
       }

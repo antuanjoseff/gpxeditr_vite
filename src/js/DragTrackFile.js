@@ -1,4 +1,5 @@
 import { Colors } from './colors.js'
+import Feature from 'ol/Feature.js';
 import GPX from 'ol/format/GPX.js'
 import OSMXML from 'ol/format/OSMXML.js'
 import DragAndDrop from 'ol/interaction/DragAndDrop.js'
@@ -44,7 +45,7 @@ export class DragTrackFile {
       var _this = this
       this.dragAndDropInteraction.on('addfeatures', function (event) {
         try{
-          const filename = event.file.name
+          var filename = event.file.name
           var featureStyle
           var pointFeatures = [], trackFeature = []
           var trackExtent
@@ -56,43 +57,94 @@ export class DragTrackFile {
               f.setStyle(featureStyle)
               pointFeatures.push(f)
             } else {
+
               if (type.indexOf('linestring') > -1) {
                 trackExtent = f.getGeometry().getExtent()
                 featureStyle = _this.styleLine(f)
                 f.setStyle(featureStyle)
                 trackFeature.push(f)                
               }
+
+              if (type.indexOf('linestring') > -1) {
+                // featureStyle = styleLine(e)
+                var counter = 0
+    
+                if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
+                  const lns = f.getGeometry().getLineStrings()
+                  var name = filename
+                  lns.forEach((linestring) => {
+                    filename = name + '(' + counter++ + ')'
+                    _this.addLayerToMap(linestring, [], filename )
+                  })
+                }  else {
+                  if (f.getGeometry().getType().toLowerCase() === 'linestring') {
+                    filename = name + '(' + counter++ + ')'
+                    _this.addLayerToMap(f, [], filename )
+                  }
+                }
+              }
+
             }
           })
     
-          const layerId = _this.newLayerId()
-          const trackLayer = new LayerGroup({
-            id: layerId,
-            layers: [
-              // TRACK
-              new VectorLayer({
-                id: 'track',
-                source: new VectorSource({
-                  features: trackFeature
-                })
-              }),
-              // WAYPOINTS
-              new VectorLayer({
-                id: 'waypoints',
-                source: new VectorSource({
-                  features: pointFeatures
-                })
-              })    
-            ]
-          })
-          _this.map.addLayer(trackLayer);
-          _this.callback(layerId, filename, trackExtent, _this.colors.getColor() )
+          // Add waypoints
+          var lastId = _this.lastLayerId()
+          var wLayer = _this.findTrackLayerFromParentId(lastId)
+          wLayer.getSource().addFeatures(pointFeatures)
 
         } catch (e) {
           console.log(e)
         }
       })
     }    
+
+    findTrackLayerFromParentId(id) {
+      var layerGroup = this.map.getLayers().array_.find((layer) => {
+        return layer.get('id') === id
+      })
+      const waypointsLayer = layerGroup.getLayers().array_.find(l => {
+        return l.get('type').toLowerCase() === 'waypoints'
+      })
+      return waypointsLayer      
+    }
+
+    addLayerToMap(trackGeometry, pointFeatures, filename) {
+      const layerId = this.newLayerId()
+      var trackExtent = trackGeometry.getExtent()
+      const trackFeature = new Feature ({
+        geometry: trackGeometry
+      })
+      const newStyle = this.styleLine()
+      const layerGroup = new LayerGroup({
+        id: layerId,
+        layers: [
+          // TRACK
+          new VectorLayer({
+            parentId: layerId,
+            style: newStyle,
+            type: 'track',
+            source: new VectorSource({
+              features: [trackFeature]
+            })
+          }),
+          // WAYPOINTS
+          new VectorLayer({
+            parentId: layerId,
+            type: 'waypoints',
+            source: new VectorSource({
+              features: pointFeatures
+            })
+          })    
+        ]
+      })
+      this.map.addLayer(layerGroup);
+      var col = newStyle.getStroke().getColor()
+      this.callback(layerId, filename, trackExtent, col )      
+    }
+
+    lastLayerId() {
+      return this.map.getLayers().array_.length
+    }
 
     newLayerId() {
       return this.map.getLayers().array_.length + 1

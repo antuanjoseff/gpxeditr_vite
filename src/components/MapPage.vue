@@ -72,6 +72,7 @@ import { ref, watch, onMounted, computed } from "vue";
 import { useStore } from 'vuex'
 import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
+import {Group as LayerGroup } from 'ol/layer.js'
 import {Style, Fill, Icon, Text, Stroke, RegularShape, Circle} from 'ol/style';
 import GPX from 'ol/format/GPX.js';
 import { Colors, setRandomcolor } from '../js/colors.js';
@@ -232,6 +233,12 @@ export default {
       })
     }
 
+    const findParentLayer = function (id) {
+      return map.value.map.getLayers().array_.find((layer) => {
+        return layer.get('parentId') == id
+      })
+    }
+
     const getCoords = (layer) => {
       return layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
     }
@@ -239,9 +246,9 @@ export default {
     const changeColor = function (layerId, color) {
       const layerGroup = findLayer(layerId)
       const trackLayer = getLayerFromLayerGroup(layerGroup, 'track')
-      const lineString = getLinestringFromTrack(trackLayer.getSource().getFeatures())
-      lineString.getStyle().getStroke().setColor(color)
-      lineString.setStyle(lineString.getStyle())
+      trackLayer.getStyle().getStroke().setColor(color)
+      trackLayer.setStyle(trackLayer.getStyle())
+
       $store.commit('main/changeLayerColor', {
         layerId,
         color
@@ -351,7 +358,6 @@ export default {
       // LOAD GPX
       // --------------------------------------
     const addTrackCallback = (layerId, filename, layerExtent, layerColor) => {
-      console.log(layerId)
       $store.commit('main/activeLayerId',  layerId)
       $store.commit('main/addLayerToTOC', {
         id: layerId,
@@ -610,26 +616,41 @@ export default {
       addNewSegment(fromLayerId, coords, type)
     }
 
-    const addNewSegment = function (fromLayerId, coords, type) {
-      const layer = findLayer(fromLayerId)
+    const addNewSegment = function (oldLayerId, coords, type) {
+      const layer = findParentLayer(oldLayerId)
       const filename = layer.get('name') + '(' + type + ')'
-      const trackinfo = tools.info.getInfoFromCoords(coords, fromLayerId)
+      const trackinfo = tools.info.getInfoFromCoords(coords, oldLayerId)
       const layerId = newLayerId()
 
-      var newLayer = new VectorLayer({
+      const layerGroup = new LayerGroup({
         id: layerId,
         name: filename,
         dist: trackinfo.distance,
         elevation: trackinfo.elevation,
-        time: trackinfo.time,
-        source: new VectorSource({
-          features: [
-            new Feature({
-              geometry: new LineString(coords)
+        time: trackinfo.time,        
+        layers: [
+          // TRACK
+          new VectorLayer({
+            parentId: layerId,
+            type: 'track',
+            style: styleLine(),
+            source: new VectorSource({
+              features: [
+                new Feature({
+                  geometry: new LineString(coords)
+                })                
+              ]
             })
-          ]
-        }),
-        style: styleLine()
+          }),
+          // WAYPOINTS
+          new VectorLayer({
+            parentId: layerId,
+            type: 'waypoints',
+            source: new VectorSource({
+              features: []
+            })
+          })    
+        ]
       })
 
       $store.commit('main/addLayerToTOC', {
@@ -640,7 +661,7 @@ export default {
         color: gColors.getColor(),
         zindex: layerId
       })
-      map.value.map.addLayer(newLayer)
+      map.value.map.addLayer(layerGroup)
     }
 
     var downloadGPX = function (layerId) {
@@ -793,7 +814,6 @@ export default {
     }
 
     watch(activeLayerId, ( newValue, oldValue ) => {
-      console.log(newValue)
       const layerGroup = findLayer(newValue)
       if (layerGroup) {
         const trackLayer = getLayerFromLayerGroup(layerGroup, 'track')
@@ -806,7 +826,7 @@ export default {
     const getLayerFromLayerGroup = (layerGroup, group) => {
       var trackLayer = null
       trackLayer = layerGroup.getLayers().array_.find(l => {
-        return l.get('id') === group
+        return l.get('type') === group
       })
       return trackLayer
     }
@@ -833,7 +853,8 @@ export default {
 
     const addPointToLayer = () => {
       if (!activeLayerId.value) return
-      const layer = findLayer(activeLayerId.value)
+      const layerGroup = findLayer(activeLayerId.value)
+      const layer = getLayerFromLayerGroup(layerGroup, 'waypoints')
       if (rightClickCoords) {
         var newFeature = new Feature({
           geometry: new Point(rightClickCoords),
