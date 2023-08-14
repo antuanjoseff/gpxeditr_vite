@@ -75,16 +75,16 @@ export class LayerSelector {
           if (!_this.previousSelectedId) {
             _this.previousSelectedId = layer.get('id')
             if (_this.isLineString(feature)) {
-              _this.color = feature.getStyle().getStroke().getColor()
-              _this.width = feature.getStyle().getStroke().getWidth()
+              _this.color = layer.getStyle().getStroke().getColor()
+              _this.width = layer.getStyle().getStroke().getWidth()
               _this.selectedLayer = layer
             }
           } else {
             if (_this.previousSelectedId != layer.get('id')){
               _this.previousSelectedId = layer.get('id')
               if (_this.isLineString(feature)) {
-                _this.color = feature.getStyle().getStroke().getColor()
-                _this.width = feature.getStyle().getStroke().getWidth()
+                _this.color = layer.getStyle().getStroke().getColor()
+                _this.width = layer.getStyle().getStroke().getWidth()
                 _this.selectedLayer = layer
               }
             }
@@ -94,7 +94,8 @@ export class LayerSelector {
         {
           hitTolerance: 10,
           layerFilter: function (l) {
-            return !_this.excludeLayerIds.includes(l.get('id'))
+            // return !_this.excludeLayerIds.includes(l.get('id'))
+            return l.get('type') === 'track'
           }
         }
       )

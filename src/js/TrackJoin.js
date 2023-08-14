@@ -187,7 +187,7 @@ export class TrackJoin {
       }
       return true
     }, { hitTolerance: 10, layerFilter: (l) => {
-      return l.get('id') !== 'joined' && !_this.selectedLayersId.includes(l.get('id'))}
+      return l.get('type') !== 'joined' && l.get('type') === 'track'}
     })
     if (hit) {
         this.joinLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(concatCoords)
@@ -225,10 +225,10 @@ export class TrackJoin {
   finish(e) {
     console.log('finished!')
     e.stopPropagation()
-    this.options.callback(
-      this.joinLayer.getSource().getFeatures()[0].getGeometry().getCoordinates(),
-      this.selectedLayersId
-    )
+    var firstLayerSelected = this.selectedLayersId[0]
+    var coords = this.joinLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+    this.options.callback(firstLayerSelected, coords, 'join' )
+
     this.map.dispatchEvent({
       type: 'toolFinished',
       toolname: 'join'

@@ -89,6 +89,9 @@ import LineString from 'ol/geom/LineString.js';
 import { transform, transformExtent } from 'ol/proj.js'
 import {containsXY} from 'ol/extent';
 import { addTrack, addTrackFromFile } from '../js/maputils.js'
+import { TrackHandler  } from '../js/TrackHandler.js'
+import { waypointStyle } from 'src/js/MapStyles.js';
+
 export default {
   setup() {
     let activeLayerCoords = undefined
@@ -112,6 +115,8 @@ export default {
     const gColors = new Colors()
     let layerCounter = 10 // Avoid 0 value
     let rightClickCoords
+    let trackHandler
+
     const newLayerId = function () {
       return ++layerCounter
     }
@@ -126,21 +131,21 @@ export default {
       })
     }
 
-    const crossStyle = (f) => {
-      return new Style({
-        ZIndex: 20,
-        image: new Icon({
-          anchor: [0, 1],
-          src: 'flag.svg',
-          scale: [0.05, 0.05]        
-        }),
-        text: new Text({
-          text: f.get('name'),
-          offsetY : 10,
-          offsetX: 5
-        })
-      })
-    }
+    // const crossStyle = (f) => {
+    //   return new Style({
+    //     ZIndex: 20,
+    //     image: new Icon({
+    //       anchor: [0, 1],
+    //       src: 'flag.svg',
+    //       scale: [0.05, 0.05]        
+    //     }),
+    //     text: new Text({
+    //       text: f.get('name'),
+    //       offsetY : 10,
+    //       offsetX: 5
+    //     })
+    //   })
+    // }
 
     const selectedStyle = new Style({
       fill: new Fill({
@@ -339,41 +344,38 @@ export default {
           this.getTargetElement().style.cursor = ''
         }
       })
-    }
+    }  
 
+    // --------------------------------------
+    // LOAD GPX
+    // --------------------------------------
+    const addTrackCallback = (layerGroup) => {     
+      const layerId = layerGroup.get('id')
+      const layer = getLayerFromLayerGroup(layerGroup, 'track')
+      map.value.map.getView().fit(layer.getSource().getExtent())
 
-    // function addDragDropInteraction() {
-    //   dragAndDropInteraction = new DragAndDrop({
-    //     formatConstructors: [
-    //       GPX,
-    //       OSMXML
-    //     ],
-    //   });
-      
-    //   map.value.map.addInteraction(new TrackOpener());
-    // }
-    
+      const wpLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
+      const wpNames = wpLayer.getSource().getFeatures().map((f) => {
+        return f.get('name')
+      })
 
-      // --------------------------------------
-      // LOAD GPX
-      // --------------------------------------
-    const addTrackCallback = (layerId, filename, layerExtent, layerColor) => {
       $store.commit('main/activeLayerId',  layerId)
       $store.commit('main/addLayerToTOC', {
         id: layerId,
-        label: filename,
+        label: layerGroup.get('name'),
         visible: true,
         active: false,
-        color: layerColor,
-        zindex: map.value.map.getLayers().values_.length
+        color: layerGroup.get('col'),
+        zindex: map.value.map.getLayers().values_.length,
+        waypoints: wpNames
       })
-      map.value.map.getView().fit(layerExtent)
     }
 
     onMounted(() => {
       // Add markers empty layer
       const MAP = map.value.map
-      const draggerFile = new DragTrackFile(MAP, addTrackCallback)
+      const draggerFile = new DragTrackFile(MAP, openFile)
+      trackHandler = new TrackHandler(MAP, addTrackCallback)
       draggerFile.on()
 
       map.value.map.getViewport().addEventListener('contextmenu', function (evt) {
@@ -382,11 +384,6 @@ export default {
       })
 
       $store.commit('main/setZoom', Math.floor(map.value.map.getView().getZoom()))
-      // markersLayer = new VectorLayer({
-      //   source: new VectorSource(),
-      //   style: crossStyle
-      // });
-      // map.value.map.addLayer(markersLayer)
 
       map.value.map.on('moveend', updateViewState)
       // map.value.map.on('pointermove', checkPointerMove)
@@ -616,10 +613,10 @@ export default {
       addNewSegment(fromLayerId, coords, type)
     }
 
-    const addNewSegment = function (oldLayerId, coords, type) {
-      const layer = findParentLayer(oldLayerId)
+    const addNewSegment = function (groupLayerId, coords, type) {
+      const layer = findLayer(groupLayerId)
       const filename = layer.get('name') + '(' + type + ')'
-      const trackinfo = tools.info.getInfoFromCoords(coords, oldLayerId)
+      const trackinfo = tools.info.getInfoFromCoords(coords, groupLayerId)
       const layerId = newLayerId()
 
       const layerGroup = new LayerGroup({
@@ -707,21 +704,7 @@ export default {
       tools.draw = draw
 
       let join = new TrackJoin(map.value.map, {
-        // activeLayerCoords: activeLayer.getSource().getFeatures()[0].getGeometry().getCoordinates(),
-        // activeLayerId: activeLayer.get('id'),
-        callback: function (coords, selectedLayersId) {
-          if (!selectedLayersId.length) {
-            return
-          }
-          const layerToModify = findLayer(selectedLayersId[0])
-          selectedLayersId.shift()
-          selectedLayersId.forEach((layerId) => {
-            const layerToRemove = findLayer(layerId)
-            map.value.map.removeLayer(layerToRemove)
-            $store.commit('main/removeTOCLayer', layerId)
-          })
-          layerToModify.getSource().getFeatures()[0].getGeometry().setCoordinates(coords)
-        },
+        callback: addNewSegment,
         styles: styleLine
       })
       tools.join = join
@@ -860,7 +843,7 @@ export default {
           geometry: new Point(rightClickCoords),
           name: waypointName.value
         })
-        newFeature.setStyle(crossStyle)
+        newFeature.setStyle(waypointStyle(newFeature))
         layer.getSource().addFeature(newFeature)
       }
       rightClickCoords = null
@@ -903,7 +886,8 @@ export default {
     }
 
     const openFile = (contents, filename) => {
-      addTrackFromFile(map.value.map, $store, contents, filename)
+      // addTrackFromFile(map.value.map, $store, contents, filename)
+      trackHandler.add(contents, filename)
     }
 
     return {

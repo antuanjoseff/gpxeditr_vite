@@ -73,15 +73,13 @@ export class TrackCutter {
         _this.layerToCut = layer
         _this.selectedLayerId = layer.get('parentId')
         _this.initCoords = layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
-        console.log(_this.initCoords)
         _this.nodesLayer = _this.getNodesLayer(_this.initCoords)
 
         var mouseCoord = _this.map.getCoordinateFromPixel(e.pixel)
         var snapped =_this.nodesLayer.getSource().getClosestFeatureToCoordinate(mouseCoord)
-        console.log(mouseCoord)
         var fIndex = snapped.get('id')
         var cNew = _this.initCoords.slice(0, fIndex)
-        _this.headCoords = _this.initCoords.slice(0, fIndex)
+        _this.headCoords = _this.initCoords.slice(0, fIndex + 1)
         _this.tailCoords = _this.initCoords.slice(fIndex, _this.initCoords.length)
 
         _this.segmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(cNew)

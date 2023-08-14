@@ -1,5 +1,5 @@
 import GPX from 'ol/format/GPX.js';
-import { styleLine, crossStyle } from './styleLine.js';
+import { styleLine, waypointStyle } from './MapStyles.js';
 import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
 import Feature from 'ol/Feature.js';
@@ -40,7 +40,6 @@ const newLayerId = (MAP) => {
 const lastLayerId = (MAP) => {
   return MAP.getLayers().array_.length
 }
-
 
 const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) => {
     const layerId = newLayerId(MAP)
@@ -87,63 +86,63 @@ const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) =>
     MAP.getView().fit(vectorSource.getExtent())    
 }
 
-  const addTrackFromFile= (MAP, $store, contents, filename) => {
-    var pointFeatures = [], trackFeature = []
+const addTrackFromFile= (MAP, $store, contents, filename) => {
+  var pointFeatures = [], trackFeature = []
 
-    // var MAP = mapRef.map
-    try {
-      var waypoints = [], featureStyle
+  // var MAP = mapRef.map
+  try {
+    var waypoints = [], featureStyle
 
-      var features = new GPX().readFeatures(contents, {
-        dataProjection: 'EPSG:4326',
-        featureProjection: 'EPSG:3857'
-      })
-      features.map((f) => {
-        const type = f.getGeometry().getType().toLowerCase()
-        if (type === 'point') {
-          featureStyle = crossStyle(f)
-          f.setStyle(featureStyle)
-          waypoints.push(f)
-        } else {
-          if (type.indexOf('linestring') > -1) {
-            // featureStyle = styleLine(e)
-            var counter = 0
+    var features = new GPX().readFeatures(contents, {
+      dataProjection: 'EPSG:4326',
+      featureProjection: 'EPSG:3857'
+    })
+    features.map((f) => {
+      const type = f.getGeometry().getType().toLowerCase()
+      if (type === 'point') {
+        featureStyle = waypointStyle(f)
+        f.setStyle(featureStyle)
+        waypoints.push(f)
+      } else {
+        if (type.indexOf('linestring') > -1) {
+          // featureStyle = styleLine(e)
+          var counter = 0
 
-            if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
-              const lns = f.getGeometry().getLineStrings()
-              var name = filename
-              lns.forEach((linestring) => {
-                addTrack(MAP, $store, linestring, 'linestring', filename )
-                filename = name + '(' + counter++ + ')'
-              })
-            }  else {
-              if (f.getGeometry().getType().toLowerCase() === 'linestring') {
-                addTrack(MAP, $store, f.getGeometry(), 'linestring', filename )
-                filename = name + '(' + counter++ + ')'
-              }
+          if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
+            const lns = f.getGeometry().getLineStrings()
+            var name = filename
+            lns.forEach((linestring) => {
+              addTrack(MAP, $store, linestring, 'linestring', filename )
+              filename = name + '(' + counter++ + ')'
+            })
+          }  else {
+            if (f.getGeometry().getType().toLowerCase() === 'linestring') {
+              addTrack(MAP, $store, f.getGeometry(), 'linestring', filename )
+              filename = name + '(' + counter++ + ')'
             }
           }
         }
-      })
-
-      // Add waypoints to last GPX segment
-      if (waypoints.length) {     
-        const lastId = lastLayerId(MAP)
-        const layerGroup = findLayer(MAP, lastId)
-        const waypointsLayer = layerGroup.getLayers().array_.find(l => {
-          return l.get('type').toLowerCase() === 'waypoints'
-        })
-        waypointsLayer.getSource().addFeatures(waypoints)  
       }
-    } catch (er) {
-      console.log(er)
-    }
-  }
-
-  const findLayer = function (MAP, id) {
-    return MAP.getLayers().array_.find((layer) => {
-      return layer.get('id') == id
     })
-  }
 
-  export { addTrack, addTrackFromFile, findLayer }
+    // Add waypoints to last GPX segment
+    if (waypoints.length) {     
+      const lastId = lastLayerId(MAP)
+      const layerGroup = findLayer(MAP, lastId)
+      const waypointsLayer = layerGroup.getLayers().array_.find(l => {
+        return l.get('type').toLowerCase() === 'waypoints'
+      })
+      waypointsLayer.getSource().addFeatures(waypoints)  
+    }
+  } catch (er) {
+    console.log(er)
+  }
+}
+
+const findLayer = function (MAP, id) {
+  return MAP.getLayers().array_.find((layer) => {
+    return layer.get('id') == id
+  })
+}
+
+export { addTrack, addTrackFromFile, findLayer }

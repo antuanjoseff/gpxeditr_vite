@@ -71,6 +71,9 @@
               </div>
             </q-item-section>
         </q-item>
+        <div v-if="element.waypoints">
+            {{ element.waypoints}}
+        </div>
         </div>
       </template>
     </draggable>
