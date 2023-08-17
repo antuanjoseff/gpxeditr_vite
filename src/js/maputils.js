@@ -76,7 +76,8 @@ const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) =>
         visible: true,
         active: false,
         color: c,
-        zindex: layerId
+        zindex: layerId,
+        waypoints:[]
     })
 
     MAP.addLayer(layerGroup)

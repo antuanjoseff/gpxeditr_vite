@@ -73,15 +73,15 @@ export class LayerSelector {
             return false
           }
           if (!_this.previousSelectedId) {
-            _this.previousSelectedId = layer.get('id')
+            _this.previousSelectedId = layer.get('parentId')
             if (_this.isLineString(feature)) {
               _this.color = layer.getStyle().getStroke().getColor()
               _this.width = layer.getStyle().getStroke().getWidth()
               _this.selectedLayer = layer
             }
           } else {
-            if (_this.previousSelectedId != layer.get('id')){
-              _this.previousSelectedId = layer.get('id')
+            if (_this.previousSelectedId != layer.get('parentId')){
+              _this.previousSelectedId = layer.get('parentId')
               if (_this.isLineString(feature)) {
                 _this.color = layer.getStyle().getStroke().getColor()
                 _this.width = layer.getStyle().getStroke().getWidth()
@@ -92,7 +92,7 @@ export class LayerSelector {
           return true
         },
         {
-          hitTolerance: 10,
+          hitTolerance: 20,
           layerFilter: function (l) {
             // return !_this.excludeLayerIds.includes(l.get('id'))
             return l.get('type') === 'track'
@@ -102,11 +102,11 @@ export class LayerSelector {
 
       if (hit) {
           this.map.getTargetElement().style.cursor = 'pointer'
-          _this.selectedFeature.setStyle(selectStyle)
+          _this.selectedLayer.setStyle(selectStyle)
       } else {
           this.previousSelectedId = undefined
-          if (_this.selectedFeature) {
-            _this.selectedFeature.setStyle(
+          if (_this.selectedLayer) {
+            _this.selectedLayer.setStyle(
               new Style({
                 stroke: new Stroke({
                   color: _this.color,

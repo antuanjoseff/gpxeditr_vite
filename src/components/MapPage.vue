@@ -90,7 +90,7 @@ import { transform, transformExtent } from 'ol/proj.js'
 import {containsXY} from 'ol/extent';
 import { addTrack, addTrackFromFile } from '../js/maputils.js'
 import { TrackHandler  } from '../js/TrackHandler.js'
-import { waypointStyle } from 'src/js/MapStyles.js';
+import { waypointStyle, waypointSelectedStyle } from 'src/js/MapStyles.js';
 
 export default {
   setup() {
@@ -253,6 +253,7 @@ export default {
       const trackLayer = getLayerFromLayerGroup(layerGroup, 'track')
       trackLayer.getStyle().getStroke().setColor(color)
       trackLayer.setStyle(trackLayer.getStyle())
+      trackLayer.set('col', color)
 
       $store.commit('main/changeLayerColor', {
         layerId,
@@ -307,7 +308,15 @@ export default {
     }
 
     function resetSelected() {
-      if (activeLayer && !toolIsActive) {
+      if (toolIsActive) return
+      const selected = $store.getters['main/getSelectedWaypoint']
+      if (selected.layerId) {      
+        const layerGroup = findLayer(selected.layerId)        
+        const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
+        clearWaypointsStyle(waypointsLayer)
+      }
+
+      if (activeLayer) {
         activeLayer.setStyle(previousSelectedStyle)
         activeLayer = false
         $store.commit('main/activeLayerId', null)
@@ -315,18 +324,7 @@ export default {
     }
     function clickOnMap(event) {
       // In case clicked on nogthing
-      if (toolIsActive) return
       resetSelected()
-      map.value.map.forEachFeatureAtPixel(event.pixel, function (feature, layer) {
-        if (activeLayer) {
-          activeLayer.setStyle(previousSelectedStyle)
-        }
-        previousSelectedStyle = layer.getStyle()
-        activeLayer = layer
-        layer.setStyle(selectedStyle)
-        $store.commit('main/activeLayerId', layer.get('id'))
-        $store.commit('main/activeLayerDimensions', getLayerDimensions(layer))
-      })
     }
 
     function getLayerDimensions(layer) {
@@ -346,19 +344,30 @@ export default {
       })
     }  
 
-    // --------------------------------------
+    // --------
     // LOAD GPX
-    // --------------------------------------
+    // --------
+
     const addTrackCallback = (layerGroup) => {     
+      function compare( a, b ) {
+        if ( a.id < b.id ){
+          return -1;
+        }
+        if ( a.id > b.id ){
+          return 1;
+        }
+        return 0;
+      }
+
       const layerId = layerGroup.get('id')
       const layer = getLayerFromLayerGroup(layerGroup, 'track')
       map.value.map.getView().fit(layer.getSource().getExtent())
 
       const wpLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
       const wpNames = wpLayer.getSource().getFeatures().map((f) => {
-        return f.get('name')
+        return {id: f.get('id'), name: f.get('name')}
       })
-
+      wpNames.sort(compare)
       $store.commit('main/activeLayerId',  layerId)
       $store.commit('main/addLayerToTOC', {
         id: layerId,
@@ -387,7 +396,7 @@ export default {
 
       map.value.map.on('moveend', updateViewState)
       // map.value.map.on('pointermove', checkPointerMove)
-      // map.value.map.on('click', clickOnMap)
+      map.value.map.on('click', clickOnMap)
       map.value.map.on('toolFinished', (event) => {
         $store.commit('main/activeLayerId', null)
         deactivateTool(event.toolname)
@@ -483,7 +492,7 @@ export default {
     const listenDrawnParts = (e) => {
       if (e.finished){
         var geom = new LineString(e.coords)
-        addTrack(geom, 'linestring', 'Drawn layer')
+        addTrack(map.value.map, $store, geom, 'linestring', 'Drawn layer')
         tools.draw.reset()
         $store.commit('main/numberOfDrawnParts', 0)
       } else {
@@ -563,6 +572,7 @@ export default {
       } else {
         activeLayerCoords = tools.info.initCoords
         $store.commit('main/ActiveLayerTrackInfo', payload)
+        $store.commit('main/setProfileIsVisible', true)
         // $store.commit('main/activeLayerId', payload.layerId)
       }
       const datasets = []
@@ -662,22 +672,24 @@ export default {
     }
 
     var downloadGPX = function (layerId) {
-      const layer = findLayer(layerId)
-      var features = layer.getSource().getFeatures()
-      var coords = []
-      features.forEach(element => {
-        coords = [...coords, ...element.getGeometry().getCoordinates()]
-      });
+      const layerGroup = findLayer(layerId)
+      const layerTrack = getLayerFromLayerGroup(layerGroup, 'track')
+      const layerWP = getLayerFromLayerGroup(layerGroup, 'waypoints')
+      var features = layerTrack.getSource().getFeatures()
+      if (layerWP.getSource().getFeatures().length) {
+        features = [
+          ...features, ...layerWP.getSource().getFeatures()
+        ]
+      }
+
       var text = new GPX().writeFeatures(
-        // route_layer.getSource().getFeatures(),
-        // [ new Feature({geometry: new MultiLineString([coords])}) ],
-        layer.getSource().getFeatures(),
+        features,
         {
           featureProjection: 'EPSG:3857',
           dataProjection: 'EPSG:4326'
         }
       );
-      download(text, layer.get('name') + '.gpx');
+      download(text, layerTrack.get('name') + '.gpx');
     };
 
     const download = (data, filename) => {
@@ -745,7 +757,7 @@ export default {
           $store.commit('main/numberOfDrawnParts', numberOfCoords)
         },
         callbackDrawFeaure: function (linestring) {
-          addTrack(linestring, 'linestring', 'drawn track')
+          addTrack(map.value.map, $store, linestring, 'linestring', 'drawn track')
         }
       })
       tools.handDraw = handDraw
@@ -808,6 +820,7 @@ export default {
 
     const getLayerFromLayerGroup = (layerGroup, group) => {
       var trackLayer = null
+
       trackLayer = layerGroup.getLayers().array_.find(l => {
         return l.get('type') === group
       })
@@ -830,7 +843,8 @@ export default {
 
     const fillTimeGaps = async() => {
       var coords = await tools.info.fillTimeGaps()
-      const layer = findLayer(activeLayerId.value)
+      const layerGroup = findLayer(activeLayerId.value)
+      const layer = getLayerFromLayerGroup(layerGroup, 'track')
       layer.getSource().getFeatures()[0].getGeometry().setCoordinates(coords)
     }
 
@@ -838,13 +852,22 @@ export default {
       if (!activeLayerId.value) return
       const layerGroup = findLayer(activeLayerId.value)
       const layer = getLayerFromLayerGroup(layerGroup, 'waypoints')
+      const newId = layer.getSource().getFeatures().length + 1
       if (rightClickCoords) {
         var newFeature = new Feature({
           geometry: new Point(rightClickCoords),
-          name: waypointName.value
+          name: waypointName.value,
+          id: newId
         })
         newFeature.setStyle(waypointStyle(newFeature))
         layer.getSource().addFeature(newFeature)
+        
+        // Add new point to TOC
+        $store.commit('main/addNewWaypoint', {
+          id: newId,
+          name: waypointName.value,
+          layerId: activeLayerId.value
+        })
       }
       rightClickCoords = null
       waypointName.value = null
@@ -890,8 +913,62 @@ export default {
       trackHandler.add(contents, filename)
     }
 
+    const clearWaypointsStyle = (waypoints) => {
+      waypoints.getSource().getFeatures().forEach((f) => {
+        f.setStyle(waypointStyle)
+      })      
+    }
+
+    const selectWaypoint = (layerId, waypointId, name) => {
+      const layerGroup = findLayer(layerId)
+      const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
+      clearWaypointsStyle(waypointsLayer)
+      const selected = waypointsLayer.getSource().getFeatures().find((f) => {
+        return f.get('id') == waypointId
+      })
+      if (selected) {
+        selected.setStyle(waypointSelectedStyle(selected))
+        $store.commit('main/setSelectedWaypoint', {
+          layerId,
+          waypointId,
+          name
+        })
+      }
+    }
+
+    const deleteWaypoint = (layerId, waypointId) => {
+      const layerGroup = findLayer(layerId)
+      const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
+      clearWaypointsStyle(waypointsLayer)
+      const selected = waypointsLayer.getSource().getFeatures().find((f) => {
+        return f.get('id') == waypointId
+      })
+      if (selected) {
+        waypointsLayer.getSource().removeFeature(selected)
+        $store.commit('main/removedWaypoint', {
+          layerId: layerId,
+          waypointId: waypointId
+        })
+      }
+    }
+    
+    const editWaypoint = (layerId, waypointId, name) => {
+      const layerGroup = findLayer(layerId)
+      const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
+      clearWaypointsStyle(waypointsLayer)
+      const selected = waypointsLayer.getSource().getFeatures().find((f) => {
+        return f.get('id') == waypointId
+      })
+      if (selected) {
+        selected.set('name', name)
+      }
+    }
+
     return {
       doSubmit,
+      selectWaypoint,
+      deleteWaypoint,
+      editWaypoint,
       openFile,
       waypointName,
       addWayPoint,

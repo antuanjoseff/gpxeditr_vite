@@ -4,9 +4,9 @@ import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
 import Point from 'ol/geom/Point.js';
 import LineString from 'ol/geom/LineString.js';
-import { Distance, projDistance } from './utils.js';
-import { transform, transformExtent } from 'ol/proj.js'
-import {selectStyle} from './utils.js';
+import { Distance } from './utils.js';
+import { transform } from 'ol/proj.js'
+import {selectStyle, createStyleByStrokeColor} from './utils.js';
 import {unByKey} from 'ol/Observable'
 import {LayerSelector} from './LayerSelector.js';
 
@@ -37,7 +37,9 @@ export class NodesInfo {
     this.slopes = []
     this.tolerance = 60
     this.selectedLayerId = undefined
+    this.nextClickCleanSegment = false
 
+    // This layer shows circle where mouse move to select segment
     this.selectedNodeLayer = new VectorLayer({
       id: 'nodes',
       source: new VectorSource({
@@ -56,11 +58,14 @@ export class NodesInfo {
       })
     })
 
+    // Layer used to get closest feature to mouse position
     this.nodesLayer = new VectorLayer({
       id: 'nodesLayer',
-      source: new VectorSource()
+      source: new VectorSource(),
+      style:[]
     })
 
+    // segment layer selected by user
     this.selectedSegmentLayer = new VectorLayer({
       id: 'segment',
       source: new VectorSource({
@@ -72,17 +77,6 @@ export class NodesInfo {
       style: selectStyle
     })
 
-  }
-
-  isActive() {
-    return this.active
-  }
-
-  cleanSegment() {
-    this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates([[]])
-    this.map.dispatchEvent({
-      type: 'track-info'
-    })
   }
 
   getLinestringFromLayer() {
@@ -100,27 +94,25 @@ export class NodesInfo {
       throttleTime: 0
     })
 
-    if (!this.selectedLayerId) {
-      this.layerSelector.on()
-      this.map.once('layer-selected', async function(e){
-        _this.selectedLayerId = e.layer.get('id')
-        _this.selectedLayer = e.layer        
-        _this.layerSelector.off()
-        // var coords = e.layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
-        var coords = _this.getLinestringFromLayer(_this.selectedLayer).getGeometry().getCoordinates()
-        _this.initCoords = coords
-        _this.nodesSource = _this.getNodesSource(coords)
-        _this.nodesLayer.setSource(_this.nodesSource)
-        _this.map.addLayer(_this.nodesLayer)
-        _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
-        _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
-        _this.sumUp(0, _this.initCoords.length - 1)
-      })
-    } else {
-      this.nodesSource = this.getNodesSource(this.initCoords)
-      this.bindPointerMove = this.map.on('pointermove', this.pointerMoveLayer.bind(this))
-      this.bindClick = this.map.on('click', this.clickLayer.bind(this))
-    }
+    this.layerSelector.on()
+
+    this.map.once('layer-selected', async function(e) {
+      var strokeWidth = 5
+      _this.selectedLayer = e.layer   
+      _this.selectedLayerId = e.layer.get('parentId')
+      _this.selectedLayer.setStyle(createStyleByStrokeColor(e.layer.get('col'), strokeWidth))
+      _this.layerSelector.off()
+
+      var coords = _this.getLinestringFromLayer(_this.selectedLayer).getGeometry().getCoordinates()
+      _this.initCoords = coords
+      _this.nodesSource = _this.getNodesSource(coords)
+      _this.nodesLayer.setSource(_this.nodesSource)
+      _this.map.addLayer(_this.nodesLayer)
+      _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
+      _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
+      _this.sumUp(0, _this.initCoords.length - 1)
+    })
+
     this.map.addLayer(this.selectedNodeLayer)
     this.map.addLayer(this.selectedSegmentLayer)
   }
@@ -132,6 +124,7 @@ export class NodesInfo {
     this.endPoint = undefined
     this.startIndex = undefined
     this.endIndex = undefined
+    
     unByKey(this.bindPointerMove)
     unByKey(this.bindClick)
     this.bindPointerMove = this.map.on('pointermove', this.pointerMoveLayer.bind(this))
@@ -188,6 +181,13 @@ export class NodesInfo {
   }
 
   clickSegment(e) {
+    console.log('click segment')
+    // if (this.nextClickCleanSegment) {
+    //   console.log('clean segment')
+    //   this.cleanSegment()
+    //   this.nextClickCleanSegment = false
+    //   return
+    // }
     this.sumUp(this.startIndex, this.endIndex)
     const data = this.trackInfo
     const response = this.trackInfo
@@ -195,9 +195,15 @@ export class NodesInfo {
     response.name = this.selectedLayer.get('name'),
     response.data = this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
     this.map.dispatchEvent(response)
-    this.reset()
-    // this.deactivate()
-    // this.activate()
+    this.nextClickCleanSegment = true
+
+    unByKey(this.bindPointerMove)
+    unByKey(this.bindClick)
+    
+    // Next click cleans segment
+    console.log('bind click cleanSegment')
+    this.bindClick = this.map.on('click', this.clickToCleanSegment.bind(this))
+    // this.reset()
   }
 
   pointerMoveSegment(e) {
@@ -229,17 +235,21 @@ export class NodesInfo {
 
   pointerMoveLayer(e) {
     var _this = this
-
     if (this.throttleTimer) return
     this.throttleTimer = true
     setTimeout(async () => {
-      var _this = this
-      const hit = this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
-        _this.selectedLayer = layer
+      const hit = _this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
+        // _this.selectedLayer = layer
         var coords = _this.getLinestringFromLayer(layer).getGeometry().getCoordinates()
         _this.nodesSource = _this.getNodesSource(coords)
         return true
-      }, { hitTolerance: 10, layerFilter: (l) => {return l.get('id') === _this.selectedLayerId} })
+      }, { 
+        hitTolerance: 10, 
+        layerFilter: (l) => {
+          return l.get('parentId') === _this.selectedLayer.get('parentId')
+         } 
+      })
+      
       if (hit) {
         var mouseCoord = this.map.getCoordinateFromPixel(e.pixel)
         this.startPoint =this.nodesSource.getClosestFeatureToCoordinate(mouseCoord)
@@ -254,7 +264,7 @@ export class NodesInfo {
         }
       } else {
         this.map.getTargetElement().style.cursor = ''
-        this.selectedLayer = undefined
+        // this.selectedLayer = undefined
         this.selectedNodeLayer.getSource().getFeatures()[0].getGeometry().setCoordinates([])
       }
       _this.throttleTimer = false
@@ -263,16 +273,12 @@ export class NodesInfo {
 
 
   sumUp(first, last) {
-    // console.log(this.nodesSource.getFeatures().length)
     if (first === last) {
       return {}
     }
     var _this = this
     var gapped = false
-    // Copy nodes just in case they are changed
-    // var first = this.startIndex
-    // var last = this.endIndex
-    // const data = this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+
     if (first > last) {
       const tmp = first
       first = last
@@ -396,7 +402,6 @@ export class NodesInfo {
     if (this.callback) {
       this.callback(response)
     }
-    // this.map.dispatchEvent(response)
   }
 
   getNodesSource(coords) {
@@ -478,6 +483,7 @@ export class NodesInfo {
       return coord[timePos] !== undefined && coord[timePos] !== 0
     }
     var index = 0
+
     while (index < _this.initCoords.length - 1) {
       if (CoordHasTime(_this.initCoords[index])) {
         index += 1
@@ -526,6 +532,24 @@ export class NodesInfo {
     this.endIndex = coords.length - 1
     this.sumUp(0, this.initCoords.length - 1)
     return this.trackInfo
+  }
+
+
+  isActive() {
+    return this.active
+  }
+
+  clickToCleanSegment() {
+    console.log('cleanSegment')
+    this.cleanSegment()
+    this.map.dispatchEvent('unselect-track')
+    this.reset()
+  }
+  cleanSegment() {
+    this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates([[]])
+    this.map.dispatchEvent({
+      type: 'track-info'
+    })
   }
 
   findLayer(id)  {

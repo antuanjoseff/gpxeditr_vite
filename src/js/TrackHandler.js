@@ -37,6 +37,7 @@ export class TrackHandler {
       features.map((f) => {
         const type = f.getGeometry().getType().toLowerCase()
         if (type === 'point') {
+          f.set('id', waypoints.length + 1)
           waypoints.push(f)
         } else {
           if (type.indexOf('linestring') > -1) {
@@ -48,15 +49,17 @@ export class TrackHandler {
               var name = filename
               lns.forEach((linestring) => {
                 filename = name + '(' + counter++ + ')'                
-                _this.prepareTrack(linestring, 'linestring', filename )
+                _this.prepareTrack(linestring, waypoints, filename )
               })
             }  else {
               if (f.getGeometry().getType().toLowerCase() === 'linestring') {
                 filename = name + '(' + counter++ + ')'
-                _this.prepareTrack(f.getGeometry(), 'linestring', filename )
+                _this.prepareTrack(f.getGeometry(), waypoints, filename )
               }
             }
           }
+          //reset waypoints
+          waypoints = []
         }
       })
   
@@ -74,35 +77,34 @@ export class TrackHandler {
     }
   }
 
-  prepareTrack(geom, type, filename) {
+  prepareTrack(geom, waypoints, filename) {
     var vectorSource
     let dist = 0
     let nCoords = 0
 
-    if (type === 'linestring') {
-        const f = new Feature({
-            geometry: geom
-        })
+    const f = new Feature({
+        geometry: geom
+    })
 
-        vectorSource = new VectorSource({
-            features: [ f ]
-        })
+    vectorSource = new VectorSource({
+        features: [ f ]
+    })
 
-        // Get length in meters, and number of nodes
-        var coords = vectorSource.getFeatures()[0].getGeometry().getCoordinates()
-        for (var index = 1; index < coords.length; index++) {
-            const p1 = coords[index - 1]
-            const p2 = coords[index]
-            dist += Distance(p1, p2)
-            nCoords++
-        }
+    // Get length in meters, and number of nodes
+    var coords = vectorSource.getFeatures()[0].getGeometry().getCoordinates()
+    for (var index = 1; index < coords.length; index++) {
+        const p1 = coords[index - 1]
+        const p2 = coords[index]
+        dist += Distance(p1, p2)
+        nCoords++
     }
-    var layerGroup = this.newLayerGroup(filename, dist, nCoords, vectorSource)
+
+    var layerGroup = this.newLayerGroup(filename, dist, nCoords, vectorSource, waypoints)
     this.map.addLayer(layerGroup)
     this.callback(layerGroup)
   }
 
-  newLayerGroup(filename, dist, nCoords, vectorSource) {
+  newLayerGroup(filename, dist, nCoords, vectorSource, waypoints) {
     const layerId = newLayerId(this.map)
     const newStyle = styleLine()
     const layerGroup = new LayerGroup({
@@ -118,14 +120,15 @@ export class TrackHandler {
             parentId: layerId,
             type: 'track',
             source: vectorSource,
-            style: newStyle
+            style: newStyle,
+            col: newStyle.getStroke().getColor()
           }),
           // WAYPOINTS
           new VectorLayer({
             parentId: layerId,
             type: 'waypoints',
             source: new VectorSource({
-              features: []
+              features: waypoints
             }),
             style: waypointStyle
           })    

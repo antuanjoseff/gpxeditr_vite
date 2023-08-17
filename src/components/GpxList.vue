@@ -13,6 +13,8 @@
         :class="activeLayerId==element.id || element.active?'active':''" @click="setActiveLayer(element.id)"
         >
           <q-item tag="div" v-ripple class="q-pr-xs" style="align-items: center;">
+            <q-item-section style="flex-grow: 5;">
+              <div class="flex row">
                 <q-icon
                   v-if="element.visible==true"
                   class="toc-layer-icon q-mr-sm"
@@ -45,9 +47,8 @@
                       :style="{color:element.color,background:element.color}"
                       name="square"/>
                   </label>
-                </div>
-
-            <q-item-section style="flex-grow: 5;">
+                </div>                
+              </div>
               <div>
                 <q-item-label
                   caption
@@ -71,13 +72,25 @@
               </div>
             </q-item-section>
         </q-item>
-        <div v-if="element.waypoints">
-            {{ element.waypoints}}
+         <div v-for="wp in element.waypoints" :key="wp.id"
+            @click="clickWaypoint(element.id, wp.id, wp.name)"
+            class="waypoint-item"
+            :class="activeWaypointId==wp.id ? 'active' : ''"
+            @keyup.delete="deletePoint(element.id, wp.id)"
+            tabindex="0"
+          >
+            <div class="wp-info">
+              <div>{{ wp.id }} {{ wp.name}}</div>
+              <div @click="showWaypointInfo(element.id, wp.id, wp.name)">
+                <q-icon name="edit" />
+              </div>
+            </div>
         </div>
         </div>
       </template>
     </draggable>
   </div>
+  <edit-waypoint @editWaypoint="editWaypoint" />
 </template>
 
 
@@ -85,10 +98,11 @@
 import { computed, defineComponent, ref } from 'vue'
 import { useStore } from 'vuex'
 import draggable from "vuedraggable";
+import EditWaypoint from './EditWaypoint.vue';
 
 export default defineComponent({
   name: 'GpxList',
-  components: { draggable },
+  components: { draggable, EditWaypoint },
   emits: [
     'zoomToLayer',
     'toggleLayer',
@@ -97,7 +111,10 @@ export default defineComponent({
     'download-track',
     'create-track',
     'overGraphic',
-    'track-profile'
+    'track-profile',
+    'clickWaypoint',
+    'deleteWaypoint',
+    'editWaypoint'
   ],
 
   setup(props, context){
@@ -123,6 +140,10 @@ export default defineComponent({
 
     const activeLayerId = computed(() => {
       return $store.getters['main/activeLayerId']
+    })
+
+    const activeWaypointId = computed(() => {
+      return $store.getters['main/getSelectedWaypoint'].waypointId
     })
 
     const toggleVisibility = (layer, layerId, waypoints=false) => {
@@ -175,9 +196,34 @@ export default defineComponent({
       context.emit('overGraphic', data)
     }
 
+    const clickWaypoint = (layerId, waypointId, name) => {
+      context.emit('clickWaypoint', {layerId, waypointId, name})
+    }
+
+    const deletePoint = (layerId, waypointId) => {
+      context.emit('deleteWaypoint', {layerId, waypointId})
+    }
+
+    const editWaypoint = (payload) => {
+      context.emit('editWaypoint', payload)
+    }
+
+    const showWaypointInfo = (layerId, waypointId, name) => {
+      $store.commit('main/setSelectedWaypoint', {
+          layerId,
+          waypointId,
+          name
+      })
+      $store.commit('main/setshowWaypointWindow', true)
+    }
 
     return {
       data,
+      showWaypointInfo,
+      deletePoint,
+      editWaypoint,
+      activeWaypointId,
+      clickWaypoint,
       activeLayerId,
       overGraphic,
       draggable,
@@ -272,5 +318,27 @@ label.active{
 }
 .no-events{
   pointer-events: none;
+}
+.waypoint-item:hover{
+  text-decoration: underline;
+  font-size: 105%;
+}
+
+.waypoint-item.active{
+  background:white;
+  color: black;
+}
+
+.waypoint-item:not(.active) .wp-info i{
+  display: none;
+}
+
+.waypoint-item.active .wp-info i{
+  display: all;
+}
+
+.wp-info {
+  display: flex;
+  justify-content: space-between;
 }
 </style>

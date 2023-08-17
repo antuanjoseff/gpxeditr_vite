@@ -27,4 +27,20 @@ const waypointStyle = (f) => {
   })
 }
 
-export { styleLine, waypointStyle }
+const waypointSelectedStyle = (f) => {
+  return new Style({
+      ZIndex: 20,
+      image: new Icon({
+          anchor: [0, 1],
+          src: 'flag.svg',
+          scale: [0.1, 0.1]        
+      }),
+      text: new Text({
+          text: f.get('name'),
+          offsetY : 10,
+          offsetX: 5
+      })
+  })
+}
+
+export { styleLine, waypointStyle, waypointSelectedStyle }

@@ -19,6 +19,9 @@ export default function () {
     ActiveLayerTrackInfo: {},
     graphSelectedRange: {},
     segmentIsSelected: false,
+    selectedWaypoint: { layerId: null, waypointId: null, name: null},
+    profileIsVisible: false,
+    showWaypointWindow: false,
     graphData: {
       labels: [],
       datasets: [

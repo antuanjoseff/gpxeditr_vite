@@ -109,7 +109,7 @@
           </div>
         <q-card  v-if="info.distance" horizontal="true" class="flex column">
           <q-card-section class="graph-wrapper" @mouseleave="mouseOut">
-            <div id="tooltip-header"></div>
+            <div v-if="profileIsVisible" id="tooltip-header"></div>
             <line-chart
               ref="LINECHART"
               height="250"
@@ -117,7 +117,7 @@
               @outGraphic="outGraphic"
               @dragOnGraph="dragOnGraph"
             ></line-chart>
-            <div id="tooltip-footer"></div>
+            <div v-if="profileIsVisible" id="tooltip-footer"></div>
           </q-card-section>
         </q-card>
     </div>
@@ -145,6 +145,10 @@ export default defineComponent({
 
     const trackHasTimeGaps = computed(() => {
       return $store.getters['main/ActiveLayerTrackInfo'].gapped
+    })
+
+    const profileIsVisible = computed(() => {
+      return $store.getters['main/profileIsVisible']
     })
 
     const info = computed(() => {
@@ -192,6 +196,7 @@ export default defineComponent({
     const cancelTrackProfile = () => {
       $store.commit('main/setTrackInfo', {})
       $store.commit('main/setActiveLayer', -1)
+      $store.commit('main/setProfileIsVisible', false)
     }
 
     const clearGraphSelection = () => {
@@ -203,6 +208,7 @@ export default defineComponent({
 
     return {
       info,
+      profileIsVisible,
       fillTimeGaps,
       LINECHART,
       trackHasTimeGaps,

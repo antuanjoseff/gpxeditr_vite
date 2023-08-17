@@ -112,12 +112,62 @@ export function graphSelectedRange (state, payload) {
     state.graphSelectedRange = payload
 }
 
+export function setProfileIsVisible ( state, value ) {
+    state.profileIsVisible = value
+}
+
 export function graphData ( state, payload ) {
-    // console.log(payload)
     state.graphData = payload
 }
 
+export function setshowWaypointWindow ( state, value ) {
+    state.showWaypointWindow = value
+}
+
 export function segmentIsSelected ( state, value ) {
-    // console.log(payload)
     state.segmentIsSelected = value
+}
+
+export function setSelectedWaypoint ( state, payload ) {
+    state.selectedWaypoint = payload
+}
+
+export function setSelectedWaypointName ( state, name ) {
+    state.selectedWaypoint.name = name
+}
+
+export function removedWaypoint ( state, payload ) {
+    const lIndex = state.TOCLayers.findIndex( (l) => {
+        return l.id === payload.layerId
+    })
+
+    const wpIndex = state.TOCLayers[lIndex].waypoints.findIndex( (wp) => {
+        return wp.id === payload.waypointId
+    })
+
+    state.TOCLayers[lIndex].waypoints.splice(wpIndex, 1)
+}
+
+export function addNewWaypoint ( state, payload ) {
+    const index = state.TOCLayers.findIndex( (l) => {
+        return l.id === payload.layerId
+    })
+
+    const len = state.TOCLayers[index].waypoints.length
+    state.TOCLayers[index].waypoints.push({
+        id:  len + 1,
+        name:  payload.name
+    })
+}
+
+export function editLayerWaypoint ( state, payload ) {
+    const layerIndex = state.TOCLayers.findIndex( (l) => {
+        return l.id === payload.layerId
+    })
+
+    const wpIndex = state.TOCLayers[layerIndex].waypoints.findIndex( (wp) => {
+        return wp.id === payload.waypointId
+    })
+
+    state.TOCLayers[layerIndex].waypoints[wpIndex].name = payload.name    
 }

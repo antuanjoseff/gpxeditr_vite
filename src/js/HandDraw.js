@@ -35,7 +35,6 @@ export class HandDraw {
   }
 
   featureDrawn(e){
-    console.log('do callback')
     const coords = e.feature.getGeometry()
     this.source.clear()
     this.numberOfCoords = 0
@@ -44,7 +43,6 @@ export class HandDraw {
   }
 
   increaseCoords(){
-    console.log(++this.numberOfCoords)
     this.callbackCoordsCounter(this.numberOfCoords)
   }
 

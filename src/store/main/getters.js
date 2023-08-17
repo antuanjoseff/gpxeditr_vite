@@ -53,3 +53,15 @@ export function graphData (state) {
 export function segmentIsSelected (state) {
     return state.segmentIsSelected
 }
+
+export function getSelectedWaypoint (state) {
+    return state.selectedWaypoint
+}
+
+export function profileIsVisible (state) {
+    return state.profileIsVisible
+}
+
+export function getShowWaypointWindow (state) {
+    return state.showWaypointWindow
+}

@@ -85,6 +85,9 @@ export default defineComponent({
 
 
     onMounted(async () => {
+      // If chart is not visible then do nothing
+      if (!CHART.value) return
+      
       await nextTick()
       window.addEventListener("resize", resizeHandler)
       chart = CHART.value.chart

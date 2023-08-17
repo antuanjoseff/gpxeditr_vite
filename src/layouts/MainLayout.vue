@@ -160,6 +160,9 @@
           @selectedSegmentCreateTrack="selectedSegmentCreateTrack"
           @overGraphic="overGraphic"
           @trackProfile="trackProfile"
+          @clickWaypoint="clickWaypoint"
+          @deleteWaypoint="deleteWaypoint"
+          @editWaypoint="editWaypoint"
         />
       </q-list>
     </q-drawer>
@@ -374,11 +377,23 @@ export default defineComponent({
 
     const showTrackProfile = () => {
       const layerId = activeLayerId.value
-      context.emit('track-profile', layerId)
+      // context.emit('track-profile', layerId)
       zoomToLayer(layerId)
       setActiveLayer(layerId)
       MAP.value.trackProfile(layerId)
       GRAPH.value.clearGraphSelection()
+    }
+  
+    const clickWaypoint = ({layerId, waypointId, name}) => {
+      MAP.value.selectWaypoint(layerId, waypointId, name)
+    }
+  
+    const deleteWaypoint = ({layerId, waypointId}) => {
+      MAP.value.deleteWaypoint(layerId, waypointId)
+    }
+  
+    const editWaypoint = ({layerId, waypointId, name}) => {
+      MAP.value.editWaypoint(layerId, waypointId, name)
     }
   
     const setActiveLayer = (index) => {
@@ -388,6 +403,9 @@ export default defineComponent({
 
     return {
       GRAPH,
+      clickWaypoint,
+      deleteWaypoint,
+      editWaypoint,
       downloadTrack,
       showTrackProfile,
       fillTimeGaps,

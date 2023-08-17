@@ -22,6 +22,15 @@ const Distance = (p1, p2) => {
   return (radius * Math.acos(d));
 }
 
+const createStyleByStrokeColor = (color, width) => {
+  return new Style({
+    stroke: new Stroke({
+      color: color,
+      width: width
+    })
+  })          
+}
+
 const selectStyle = [
   new Style({
     stroke: new Stroke({
@@ -45,4 +54,4 @@ const animatedPointStyle = new Style({
   })
 })
 
-export { projDistance, Distance, selectStyle, animatedPointStyle }
+export { projDistance, Distance, createStyleByStrokeColor, selectStyle, animatedPointStyle }
