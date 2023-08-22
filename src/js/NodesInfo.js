@@ -107,6 +107,8 @@ export class NodesInfo {
       _this.initCoords = coords
       _this.nodesSource = _this.getNodesSource(coords)
       _this.nodesLayer.setSource(_this.nodesSource)
+      console.log(_this.nodesLayer.get('id'))
+
       _this.map.addLayer(_this.nodesLayer)
       _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
       _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
@@ -148,6 +150,7 @@ export class NodesInfo {
 
     this.map.removeLayer(this.selectedNodeLayer)
     this.map.removeLayer(this.selectedSegmentLayer)
+    this.map.removeLayer(this.nodesLayer)
     this.initCoords = undefined
     this.hoverOnActiveLayer = undefined
     this.nodesSource = undefined
@@ -540,7 +543,6 @@ export class NodesInfo {
   }
 
   clickToCleanSegment() {
-    console.log('cleanSegment')
     this.cleanSegment()
     this.map.dispatchEvent('unselect-track')
     this.reset()

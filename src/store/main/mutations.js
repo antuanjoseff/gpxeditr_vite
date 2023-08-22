@@ -20,12 +20,14 @@ export function removeLayerFromTOC ( state, index ) {
 }
 
 export function toggleLayer ( state, payload ) {
-    const vis = payload.visible
-    const layerId = payload.layerId
-    const layer = state.TOCLayers.find((layer)=>{
-        return layer.id === layerId
+    const layerVisible = 'visible' in payload ? payload.visible : true
+    const waypointsVisible = 'waypointsVisible' in payload ? payload.waypointsVisible : true
+    const lIndex = state.TOCLayers.findIndex( (l) => {
+        return l.id === payload.layerId
     })
-    layer.visible = vis
+
+    state.TOCLayers[lIndex].visible = layerVisible
+    state.TOCLayers[lIndex].waypointsVisible = waypointsVisible
 }
 
 export function newOrder ( state, newValue ) {
@@ -170,4 +172,12 @@ export function editLayerWaypoint ( state, payload ) {
     })
 
     state.TOCLayers[layerIndex].waypoints[wpIndex].name = payload.name    
+}
+
+export function updateLayerWaypoints ( state, payload) { 
+    const layerIndex = state.TOCLayers.findIndex( (l) => {
+        return l.id === payload.layerId
+    })
+
+    state.TOCLayers[layerIndex].waypoints = payload.waypoints
 }

@@ -6,7 +6,10 @@ export default function () {
       // visible: true,
       // active: false,
       // color: '#afadaaa',
-      // zindex: 10
+      // zindex: 10,
+      // waypoints: [],
+      // waypointsVisible: true
+
     ],
     zoom: undefined,
     numLayers: 0,

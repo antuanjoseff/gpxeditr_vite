@@ -23,13 +23,20 @@
                 />
                 <q-icon
                   v-else
-                  class="toc-layer-icon"
+                  class="toc-layer-icon q-mr-sm"
                   name="visibility_off"
                   @click.stop.prevent="toggleVisibility(element, element.id)"
                 />
                 <q-icon
-                  class="toc-layer-icon"
-                  name="flag"
+                  v-if="element.waypoints.length && element.waypointsVisible"
+                  class="toc-layer-icon q-mr-sm"
+                  name="gps_fixed"
+                  @click.stop.prevent="toggleVisibility(element, element.id, 'waypoints')"
+                />
+                <q-icon
+                  v-if="element.waypoints.length && !element.waypointsVisible"
+                  class="toc-layer-icon q-mr-sm off"
+                  name="gps_off"
                   @click.stop.prevent="toggleVisibility(element, element.id, 'waypoints')"
                 />                
                 <div @click.stop>
@@ -52,7 +59,7 @@
               <div>
                 <q-item-label
                   caption
-                  class="zoom-in q-ml-md"
+                  class="zoom-in q-mt-sm"
                   @doubleclick.prevent="setActiveLayer(element.id)"
                   @click.stop="zoomToLayer(element.id)"
                 >
@@ -72,25 +79,32 @@
               </div>
             </q-item-section>
         </q-item>
-         <div v-for="wp in element.waypoints" :key="wp.id"
-            @click="clickWaypoint(element.id, wp.id, wp.name)"
-            class="waypoint-item"
-            :class="activeWaypointId==wp.id ? 'active' : ''"
-            @keyup.delete="deletePoint(element.id, wp.id)"
-            tabindex="0"
-          >
-            <div class="wp-info">
-              <div>{{ wp.id }} {{ wp.name}}</div>
-              <div @click="showWaypointInfo(element.id, wp.id, wp.name)">
-                <q-icon name="edit" />
+          <div 
+            class="track-waypoints-container"
+            :class="(element.waypoints.length && element.waypointsVisible) ? 'show' : 'hide'">
+              <div v-for="wp in element.waypoints" :key="wp.id"
+                  @click="clickWaypoint(element.id, wp.id, wp.name)"
+                  class="waypoint-item"
+                  :class="activeWaypointId==wp.id ? 'active' : ''"
+                  @keyup.delete="deletePoint(element.id, wp.id)"
+                  tabindex="0"
+                >
+                  <div class="wp-info">
+                    <div>{{ wp.id }} {{ wp.name}}</div>
+                    <div @click.stop="showWaypointInfo(element.id, wp.id, wp.name)">
+                      <q-icon class="waypoint-edit" name="edit" />
+                    </div>
+                  </div>
               </div>
-            </div>
-        </div>
+          </div>
         </div>
       </template>
     </draggable>
   </div>
-  <edit-waypoint @editWaypoint="editWaypoint" />
+  <edit-waypoint 
+    @deleteWaypoint="deletePoint" 
+    @editWaypoint="editWaypoint" 
+  />
 </template>
 
 
@@ -169,8 +183,6 @@ export default defineComponent({
 
     // DRAGGING
     const startDrag = (item, i, e) => {
-      // e.dataTransfer.dropEffect = 'move'
-      // e.dataTransfer.effectAllowed = 'move'
       startLoc = e.clientY;
       dragging = true;
       dragFrom = item;
@@ -200,7 +212,7 @@ export default defineComponent({
       context.emit('clickWaypoint', {layerId, waypointId, name})
     }
 
-    const deletePoint = (layerId, waypointId) => {
+    const deletePoint = ({layerId, waypointId}) => {
       context.emit('deleteWaypoint', {layerId, waypointId})
     }
 
@@ -327,6 +339,7 @@ label.active{
 .waypoint-item.active{
   background:white;
   color: black;
+  padding: 2px;
 }
 
 .waypoint-item:not(.active) .wp-info i{
@@ -340,5 +353,20 @@ label.active{
 .wp-info {
   display: flex;
   justify-content: space-between;
+}
+
+.waypoint-edit{
+  border: 1px solid #ccc;
+  padding: 2px;
+}
+.track-waypoints-container{
+  max-height: 1000px;
+  overflow: auto;
+  transition: max-height .5s ease-out;
+}
+
+.track-waypoints-container.hide{
+  max-height: 0px;
+  transition: max-height .5s ease-out;
 }
 </style>

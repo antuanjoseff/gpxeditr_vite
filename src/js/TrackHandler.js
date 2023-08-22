@@ -146,7 +146,9 @@ export class TrackHandler {
         visible: true,
         active: false,
         color: c,
-        zindex: layerId
+        zindex: layerId,
+        waypoints: [],
+        waypointsVisible: true
     })
 
     MAP.addLayer(layerGroup)

@@ -272,6 +272,11 @@ export default {
       } else {
         const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
         waypointsLayer.setVisible(!waypointsLayer.getVisible())
+        
+        $store.commit('main/toggleLayer', {
+          layerId,
+          waypointsVisible:waypointsLayer.getVisible()
+        })        
       }
     }
 
@@ -376,7 +381,8 @@ export default {
         active: false,
         color: layerGroup.get('col'),
         zindex: map.value.map.getLayers().values_.length,
-        waypoints: wpNames
+        waypoints: wpNames,
+        waypointsVisible: true
       })
     }
 
@@ -666,7 +672,9 @@ export default {
         visible: true,
         active: false,
         color: gColors.getColor(),
-        zindex: layerId
+        zindex: layerId,
+        waypoints: [],
+        waypointsVisible: true
       })
       map.value.map.addLayer(layerGroup)
     }
@@ -920,19 +928,29 @@ export default {
     }
 
     const selectWaypoint = (layerId, waypointId, name) => {
-      const layerGroup = findLayer(layerId)
-      const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
-      clearWaypointsStyle(waypointsLayer)
-      const selected = waypointsLayer.getSource().getFeatures().find((f) => {
-        return f.get('id') == waypointId
-      })
-      if (selected) {
-        selected.setStyle(waypointSelectedStyle(selected))
+      const selectedWaypoint = $store.getters['main/getSelectedWaypoint']
+      // If waypoint is already selected, then unselect it
+      if (selectedWaypoint.layerId === layerId && selectedWaypoint.waypointId === waypointId) {
         $store.commit('main/setSelectedWaypoint', {
-          layerId,
-          waypointId,
-          name
+          layerId: null,
+          waypointId: null,
+          name: null
+        })        
+      } else {
+        const layerGroup = findLayer(layerId)
+        const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
+        clearWaypointsStyle(waypointsLayer)
+        const selected = waypointsLayer.getSource().getFeatures().find((f) => {
+          return f.get('id') == waypointId
         })
+        if (selected) {
+          selected.setStyle(waypointSelectedStyle(selected))
+          $store.commit('main/setSelectedWaypoint', {
+            layerId,
+            waypointId,
+            name
+          })
+        }
       }
     }
 
@@ -949,6 +967,15 @@ export default {
           layerId: layerId,
           waypointId: waypointId
         })
+        // Decrease 'id' to make them consecutive after removing one feature
+        const waypoints = []
+        waypointsLayer.getSource().getFeatures().forEach((f) => {
+          if (f.get('id') > waypointId) {
+            f.set('id', f.get('id') - 1)
+          }
+          waypoints.push({ id: f.get('id'), name: f.get('name') })
+        })
+        $store.commit('main/updateLayerWaypoints', { layerId, waypoints })
       }
     }
     
