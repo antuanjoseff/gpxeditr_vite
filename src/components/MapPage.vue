@@ -828,7 +828,6 @@ export default {
 
     const getLayerFromLayerGroup = (layerGroup, group) => {
       var trackLayer = null
-
       trackLayer = layerGroup.getLayers().array_.find(l => {
         return l.get('type') === group
       })
@@ -929,16 +928,18 @@ export default {
 
     const selectWaypoint = (layerId, waypointId, name) => {
       const selectedWaypoint = $store.getters['main/getSelectedWaypoint']
+      const layerGroup = findLayer(layerId)
+      const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
+
       // If waypoint is already selected, then unselect it
       if (selectedWaypoint.layerId === layerId && selectedWaypoint.waypointId === waypointId) {
+        clearWaypointsStyle(waypointsLayer)
         $store.commit('main/setSelectedWaypoint', {
           layerId: null,
           waypointId: null,
           name: null
         })        
       } else {
-        const layerGroup = findLayer(layerId)
-        const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
         clearWaypointsStyle(waypointsLayer)
         const selected = waypointsLayer.getSource().getFeatures().find((f) => {
           return f.get('id') == waypointId
@@ -977,8 +978,17 @@ export default {
         })
         $store.commit('main/updateLayerWaypoints', { layerId, waypoints })
       }
+      unselectdWaypoint()        
     }
     
+    const unselectdWaypoint = () => {
+      $store.commit('main/setSelectedWaypoint', {
+        layerId: null,
+        waypointId: null,
+        name: null
+      })      
+    }
+
     const editWaypoint = (layerId, waypointId, name) => {
       const layerGroup = findLayer(layerId)
       const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')

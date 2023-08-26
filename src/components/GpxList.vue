@@ -86,7 +86,7 @@
                   @click="clickWaypoint(element.id, wp.id, wp.name)"
                   class="waypoint-item"
                   :class="activeWaypointId==wp.id ? 'active' : ''"
-                  @keyup.delete="deletePoint(element.id, wp.id)"
+                  @keyup.delete="deletePoint({layerId: element.id, waypointId: wp.id})"
                   tabindex="0"
                 >
                   <div class="wp-info">

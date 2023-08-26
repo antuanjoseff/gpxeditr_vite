@@ -182,6 +182,7 @@ export default defineComponent({
       context.emit('out-graphic', data)
       document.getElementById('tooltip-footer').innerHTML = ''
       document.getElementById('tooltip-header').innerHTML = ''
+      LINECHART.value.clearGraphSelection()
     }
 
     const fillTimeGaps = (data) => {
