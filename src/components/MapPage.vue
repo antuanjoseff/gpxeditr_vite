@@ -30,7 +30,27 @@
   <q-list dense style="min-width: 100px">
     <q-item clickable v-close-popup v-if="layerIsActive">
       <q-item-section
-          title="Activa capa"
+        title="Activa capa"
+        @click="editTimestamp('start')"
+      >
+        Change timestamp from starting date and time
+      </q-item-section>
+    </q-item>
+  </q-list>
+  <q-list dense style="min-width: 100px">
+    <q-item clickable v-close-popup v-if="layerIsActive">
+      <q-item-section
+        title="Activa capa"
+        @click="editTimestamp('end')"
+      >
+        Change timestamp from ending date and time
+      </q-item-section>
+    </q-item>
+  </q-list>
+  <q-list dense style="min-width: 100px">
+    <q-item clickable v-close-popup v-if="layerIsActive">
+      <q-item-section
+        title="Activa capa"
         @click="addWaypointStart('layer')"
       >
         Add waypoint to layer
@@ -47,6 +67,42 @@
     </q-item>
   </q-list>
 </q-menu>
+
+<!-- INPUT FOR DATE/TIME TIMESTAMP -->
+<q-dialog v-model="showModalDateTime" class="dialog-date-time" persistent @keyup.enter="doSubmitEditTimestamp">
+  <div class="modal-date-time q-pa-md flex column">
+      <div>
+        <div>
+          <h5>
+          Enter DATE and TIME of {{ editTimestampMode }}ing track point
+          </h5>
+        </div>
+        <div class="q-gutter-md row no-wrap items-start">
+          <q-date v-model="model" mask="YYYY-MM-DD HH:mm" color="purple" />
+          <q-time v-model="model" mask="YYYY-MM-DD HH:mm" color="purple" />
+        </div>    
+      </div>
+    <div class="q-mt-md">
+        <q-btn flat label="Cancel" v-close-popup/>
+        <q-btn flat label="OK" @click="modifyTimestamp"/>
+    </div>
+  </div>
+</q-dialog>
+
+<!-- CONFIRM -->
+<q-dialog v-model="confirm" persistent>
+  <q-card class="modal-date-time">
+    <q-card-section class="row items-center">
+      <h5>
+        The timestamp has been updated successfully
+      </h5>      
+    </q-card-section>
+
+    <q-card-actions align="right">
+      <q-btn flat label="OK" color="primary" @click="showModalDateTime=false" v-close-popup />
+    </q-card-actions>
+  </q-card>
+</q-dialog>    
 
 <!-- INPUT FOR WAYPOINT NAME -->
 <q-dialog v-model="showInput" persistent @keyup.enter="doSubmit">
@@ -100,9 +156,13 @@ export default {
     const projection = ref("EPSG:3857")
     const zoom = ref(14)
     const showInput = ref(false)
+    const confirm = ref(false)
+    const showModalDateTime = ref(false)
+    const editTimestampMode = ref('start')
     const waypointName = ref()
     const rotation = ref(0)
     const waypointMode = ref()
+    const model = ref('2023-08-29 21:02')
     const map = ref(null)
     const coordsContainer = ref()
     let markersLayer
@@ -894,6 +954,11 @@ export default {
       showInput.value = false
     } 
 
+    const editTimestamp = (mode) => {
+      showModalDateTime.value = true
+      editTimestampMode.value = mode
+    }
+
     const addWaypointStart = (mode) => {
       waypointMode.value = mode
       showInput.value = true
@@ -905,6 +970,10 @@ export default {
       } else {
         addPointToLayer()
       }
+    }
+
+    const doSubmitEditTimestamp = () => {
+      console.log('doSubmitEditTimestamp')
     }
 
     const doSubmit = () => {
@@ -988,6 +1057,32 @@ export default {
         name: null
       })      
     }
+    
+    const modifyTimestamp = () => {
+      const mode = editTimestampMode.value
+      const layerGroup = findLayer(activeLayerId.value)
+      const layer = getLayerFromLayerGroup(layerGroup, 'track')
+      const coords = layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+      const selectedTime = new Date(model.value)
+    
+      // Get inc in timestamp
+      let trackTime
+      if (mode === 'end'){
+        trackTime = new Date(coords[coords.length -1][3])
+      } else {
+        trackTime = new Date(coords[0][3])
+      }
+      // Get elapsed SECONDS between two dates. 
+      const incTime  = (selectedTime.getTime() / 1000) - trackTime.getTime()
+
+      // Update track coords
+      var edited = coords.map((c) => {
+        c[3] += incTime
+        return c
+      })
+      layer.getSource().getFeatures()[0].getGeometry().setCoordinates(edited)
+      confirm.value = true
+    }
 
     const editWaypoint = (layerId, waypointId, name) => {
       const layerGroup = findLayer(layerId)
@@ -1002,7 +1097,13 @@ export default {
     }
 
     return {
+      model,
+      modifyTimestamp,
+      confirm,
+      editTimestampMode,
       doSubmit,
+      doSubmitEditTimestamp,
+      editTimestamp,
       selectWaypoint,
       deleteWaypoint,
       editWaypoint,
@@ -1012,6 +1113,7 @@ export default {
       addWaypointStart,
       waypointMode,
       showInput,
+      showModalDateTime,
       layerIsActive,
       addPointToLayer,
       addPointToMap,
@@ -1048,5 +1150,16 @@ export default {
 .ol-layers,
 canvas{
   pointer-events: none !important;
+}
+.modal-date-time{
+  max-height: unset;
+  background: white;
+  align-items: center;
+  min-width: unset;
+  max-width: unset;
+}
+.dialog-date-time{
+  min-width: unset;
+  max-width: unset;
 }
 </style>
