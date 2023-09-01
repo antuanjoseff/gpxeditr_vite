@@ -26,6 +26,7 @@
   <q-menu
     touch-position
     context-menu
+    class="context-menu"
   >
   <q-list dense style="min-width: 100px">
     <q-item clickable v-close-popup v-if="layerIsActive">
@@ -112,10 +113,10 @@
     </q-card-section>
 
     <q-card-section class="q-pt-none">
-      <q-input dense v-model="waypointName" autofocus @keyup.enter="prompt = false" />
+      <q-input class="wp-name" dense v-model="waypointName" autofocus @keyup.enter="prompt = false" />
     </q-card-section>
 
-    <q-card-actions align="right" class="text-primary">
+    <q-card-actions align="right" class="text-primary add-wp-buttons">
       <q-btn flat label="Cancel" v-close-popup />
       <q-btn flat label="OK" v-close-popup @click="addWayPoint" />
     </q-card-actions>
@@ -147,6 +148,9 @@ import {containsXY} from 'ol/extent';
 import { addTrack, addTrackFromFile } from '../js/maputils.js'
 import { TrackHandler  } from '../js/TrackHandler.js'
 import { waypointStyle, waypointSelectedStyle } from 'src/js/MapStyles.js';
+import lineString from "turf-linestring";
+import lineChunk from '@turf/line-chunk';
+
 
 export default {
   setup() {
@@ -364,7 +368,6 @@ export default {
 
       if (activeLayerId.value) {
         const layer = findLayer(activeLayerId.value)
-        console.log(layer)
         layer.getSource().addFeature(f)
       }
       markersLayer.getSource().addFeature(f)
@@ -389,6 +392,7 @@ export default {
     }
     function clickOnMap(event) {
       // In case clicked on nogthing
+      console.log(event)
       resetSelected()
     }
 
@@ -1080,6 +1084,28 @@ export default {
         c[3] += incTime
         return c
       })
+      const src = 'EPSG:3857'
+      const dest = 'EPSG:4326'
+      var ed = edited.map((e) => {
+        // return transform([e[0], e[1]], src, dest)
+        return [e[0].toFixed(3), e[1].toFixed(3)]
+      })
+      // const chunkSize = 100;
+      // var chunks = lineChunk(lineString(ed), chunkSize, { units: "meters" });
+
+      // Avg distance between track points
+      // console.log(layerGroup.get('dist') / layerGroup.get('nCoords'))      
+
+      // Get distance between consecutive track points
+      // ed.forEach( (e, idx) => {
+      //   var p1 = ed[idx]
+      //   var p2 = ed[idx+1]
+      //   var alfa = Math.atan((p2[1] - p1[1] / (p2[0] - p1[0])))
+      //   var d = ((p2[1] - p1[1]) / Math.sin(alfa)).toFixed(3)
+      //   console.log(d)
+      // })
+      
+
       layer.getSource().getFeatures()[0].getGeometry().setCoordinates(edited)
       confirm.value = true
     }

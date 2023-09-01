@@ -6,6 +6,7 @@ import VectorLayer from 'ol/layer/Vector.js'
 import VectorSource from 'ol/source/Vector.js'
 import {styleLine, waypointStyle} from './MapStyles.js'
 import { Distance } from './utils.js';
+import { transform } from 'ol/proj.js'
 
 export class TrackHandler {
   /**
@@ -95,7 +96,9 @@ export class TrackHandler {
     for (var index = 1; index < coords.length; index++) {
         const p1 = coords[index - 1]
         const p2 = coords[index]
-        dist += Distance(p1, p2)
+        var c1 = transform(p1, 'EPSG:3857', 'EPSG:4326')
+        var c2 = transform(p2, 'EPSG:3857', 'EPSG:4326')       
+        dist += Distance(c1, c2)
         nCoords++
     }
 

@@ -7,6 +7,7 @@
           dense
           round
           icon="menu"
+          class="main-menu"
           aria-label="Menu"
           @click="toggleLeftDrawer"
         />
@@ -92,7 +93,7 @@
           <div>
             <input type="file" id="actual-btn" hidden @change="readFile($event)"/>
             <label for="actual-btn">
-              <q-icon class="menu-icon"  name="folder" size="2em"/>
+              <q-icon class="menu-icon folder"  name="folder" size="2em"/>
             </label>
           </div>
 

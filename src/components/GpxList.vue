@@ -29,13 +29,13 @@
                 />
                 <q-icon
                   v-if="element.waypoints.length && element.waypointsVisible"
-                  class="toc-layer-icon q-mr-sm"
+                  class="toc-layer-icon q-mr-sm gps_fixed"
                   name="gps_fixed"
                   @click.stop.prevent="toggleVisibility(element, element.id, 'waypoints')"
                 />
                 <q-icon
                   v-if="element.waypoints.length && !element.waypointsVisible"
-                  class="toc-layer-icon q-mr-sm off"
+                  class="toc-layer-icon q-mr-sm off gps_off"
                   name="gps_off"
                   @click.stop.prevent="toggleVisibility(element, element.id, 'waypoints')"
                 />                

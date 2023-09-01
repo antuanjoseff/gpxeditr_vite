@@ -69,6 +69,7 @@ export class TrackCutter {
     setTimeout(async () => {
       var _this = this
       if (_this.pause) return
+      console.log(e.pixel)
       const hit = this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
         _this.layerToCut = layer
         _this.selectedLayerId = layer.get('parentId')
@@ -87,7 +88,7 @@ export class TrackCutter {
       }, { hitTolerance: 10, layerFilter: (l) => {return l.get('type') === 'track'}})
 
       if (hit) {
-        this.map.getTargetElement().style.cursor = 'pointer'
+        this.map.getTargetElement().style.cursor = 'pointer'        
       } else {
         this.map.getTargetElement().style.cursor = ''
         _this.layerToCut = undefined

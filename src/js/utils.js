@@ -4,6 +4,12 @@ const projDistance = function (p1, p2) {
   return Math.sqrt(Math.pow((p1[0]- p2[0]), 2) + Math.pow((p1[1]- p2[1]), 2) )
 }
 
+// const Distance = (p1, p2) => {
+//   var alfa = Math.atan((p2[1] - p1[1] / (p2[0] - p1[0])))
+//   var d = ((p2[1] - p1[1]) / Math.sin(alfa)).toFixed(3)  
+//   return Math.abs(d)
+// }
+
 const Distance = (p1, p2) => {
   var lon1 = p1[0]
   var lat1 = p1[1]
