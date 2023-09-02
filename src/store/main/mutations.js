@@ -7,7 +7,30 @@ export function addLayerToTOC ( state, payload ) {
     state.TOCLayers.forEach((e, i) => {
         e.index = i
     })
+    state.TOCLayers[state.TOCLayers.length - 1].active = true
     state.numLayers = state.TOCLayers.length
+}
+
+export function setTOCLayerInfo ( state, payload ) {
+    // Add new array on top of previous ones
+    const index = state.TOCLayers.findIndex((l) => {
+        return l.id === payload.layerId
+    })
+    state.TOCLayers[index].info = payload.info
+}
+
+export function activeLayerId (state, layerId) {
+    state.TOCLayers.forEach((l) => {
+        l.active = false
+    })    
+
+    const index = state.TOCLayers.findIndex((l)=> {
+        return l.id === layerId
+    })
+    if (index !== -1) {
+        state.TOCLayers[index].active = true
+    }
+    state.activeLayerId = layerId
 }
 
 export function removeLayerFromTOC ( state, searchId ) {
@@ -37,14 +60,28 @@ export function newOrder ( state, newValue ) {
     })
 }
 
-export function setActiveLayer ( state, index ) {
+export function setActiveLayer ( state, layerId ) {
     state.TOCLayers.forEach((e => {
-        if (e.id === index) {
+        if (e.id === layerId) {
           e.active = true
+          state.activeLayerId = layerId
         } else {
           e.active = false
         }
     }))
+}
+
+export function setActiveLayerInfo ( state, payload ) {
+    const index = state.TOCLayers.findIndex((l) => {
+        return l.active
+    })
+    if ('info' in payload) {
+        state.TOCLayers[index].info = payload.info
+    }
+
+    if ('name' in payload) {
+        state.TOCLayers[index].name = payload.name
+    }
 }
 
 export function changeLayerColor ( state, payload ) {
@@ -70,10 +107,6 @@ export function ReorderLayers (state, payload) {
     state.TOCLayers.forEach((layer, index) => {
         layer.zindex = (len - index) * 10
     })
-}
-
-export function activeLayerId (state, layerId) {
-    state.activeLayerId = layerId
 }
 
 export function activeTool (state, toolname) {

@@ -72,7 +72,7 @@ const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) =>
     
     $store.commit('main/addLayerToTOC', {
         id: layerId,
-        label: filename,
+        name: filename,
         visible: true,
         active: false,
         color: c,

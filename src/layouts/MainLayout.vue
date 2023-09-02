@@ -153,6 +153,7 @@
         </q-item-label>
 
         <gpx-list
+          ref="GPX"
           @zoomToLayer="zoomToLayer"
           @toggleLayer="toggleLayer"
           @changeColor="changeColor"
@@ -165,6 +166,8 @@
           @deleteWaypoint="deleteWaypoint"
           @editWaypoint="editWaypoint"
           @deleteTrack="deleteTrack"
+          @editTrackTimestamp="editTrackTimestamp"
+          @editTrackName="editTrackName"
         />
       </q-list>
     </q-drawer>
@@ -175,6 +178,7 @@
         <div style="flex-grow:1">
           <map-page
             ref="MAP"
+            @trackNameChanged="trackNameChanged"
           />
         </div>
         <div>
@@ -185,6 +189,7 @@
             @outGraphic="outGraphic"
             @dragOnGraph="dragOnGraph"
             @fillTimeGaps="fillTimeGaps"
+            @cancelTrackProfile="cancelTrackProfile"
           />
         </div>
       </div>
@@ -211,6 +216,7 @@ export default defineComponent({
   setup (props, context) {
     const addPointClick = ref(false)
     const latLon = ref()
+    const GPX = ref()
     const GRAPH = ref()
     const leftDrawerOpen = ref(false)
     const $store = useStore()
@@ -381,13 +387,21 @@ export default defineComponent({
       const layerId = activeLayerId.value
       // context.emit('track-profile', layerId)
       zoomToLayer(layerId)
-      setActiveLayer(layerId)
+      // setActiveLayer(layerId)
       MAP.value.trackProfile(layerId)
       GRAPH.value.clearGraphSelection()
     }
   
     const deleteTrack = (layerId) => {
       MAP.value.deleteTrack(layerId)
+    }
+  
+    const cancelTrackProfile = () => {
+      $store.commit('main/setTrackInfo', {})
+      $store.commit('main/setActiveLayer', -1)
+      $store.commit('main/setProfileIsVisible', false)
+      MAP.value.deactivateTool('info')
+      // MAP.value.activateTool('info')
     }
   
     const clickWaypoint = ({layerId, waypointId, name}) => {
@@ -402,10 +416,23 @@ export default defineComponent({
       MAP.value.editWaypoint(layerId, waypointId, name)
     }
   
-    const setActiveLayer = (index) => {
-      $store.commit('main/activeLayerId', index)
-      $store.commit('main/setActiveLayer', index)
+    const editTrackTimestamp = (mode) => {
+      MAP.value.editTimestamp(mode)
     }
+  
+    const editTrackName = (payload) => {
+      MAP.value.editTrackName(payload)
+    }
+  
+    const trackNameChanged = (payload) => {
+      GPX.value.confirmName = true
+      GPX.value.inputLoseFocus()
+    }
+  
+    // const setActiveLayer = (index) => {
+    //   $store.commit('main/activeLayerId', index)
+    //   $store.commit('main/setActiveLayer', index)
+    // }
 
     return {
       GRAPH,
@@ -445,7 +472,12 @@ export default defineComponent({
         leftDrawerOpen.value = !leftDrawerOpen.value
       },
       activeLayerId,
-      deleteTrack
+      deleteTrack,
+      cancelTrackProfile,
+      editTrackTimestamp,
+      editTrackName,
+      trackNameChanged,
+      GPX
     }
   }
 })

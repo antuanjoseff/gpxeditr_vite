@@ -1,5 +1,5 @@
 <template>
-  <div v-if="data.length">
+  <div v-if="data.length" class="tracks-list">
     <draggable
       v-model="data"
       item-key="id"
@@ -55,6 +55,11 @@
                   @click.stop.prevent="toggleVisibility(element, element.id, 'waypoints')"
                 />                        
                 <q-icon
+                  class="toc-layer-icon q-mr-sm off info"
+                  name="info"
+                  @click.stop.prevent="modalTrackInfo(element.id)"
+                />                        
+                <q-icon
                   class="toc-layer-icon q-mr-sm off delete"
                   name="delete"
                   @click.stop.prevent="confirmDeleteTrack(element.id)"
@@ -67,7 +72,7 @@
                   @doubleclick.prevent="setActiveLayer(element.id)"
                   @click.stop="zoomToLayer(element.id)"
                 >
-                  {{ element.label }} - {{ element.id }}
+                  {{ element.name }} - {{ element.id }}
                 </q-item-label>
               </div>
             </q-item-section>
@@ -109,6 +114,53 @@
     @deleteWaypoint="deletePoint" 
     @editWaypoint="editWaypoint" 
   />  
+    <!-- MODAL TRACK INFO -->
+    <q-dialog v-model="showModalInfo" persistent>
+      <q-card class="confirmation-modal">
+        <q-card-section class="row items-center">
+          <div class="col-12 track-name">
+              <q-input outlined label="Name" dense v-model="trackName" autofocus @keyup.enter="editTrackName" />
+            </div>
+        </q-card-section>
+
+        <q-card-section class="row items-center">
+          <div class="row track-info">
+            <div class="col-6" ><span class="q-ml-sm text-h6">Start time</span></div>
+            <div class="col-6"><span class="q-ml-sm text-h6">End time</span></div>
+
+            <div class="col-6">
+              <span class="q-ml-sm">{{ trackInfo.startTime }} </span>
+              <q-icon name="access_time" size="2em" @click="editTrackTimestamp('start')" class="edit"/>
+            </div>
+              
+            <div class="col-6">
+              <span class="q-ml-sm">{{ trackInfo.endTime }} </span>
+              <q-icon name="access_time" size="2em"  @click="editTrackTimestamp('end')" class="edit" />
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn id="OKButton" flat label="CLOSE" color="primary" v-close-popup />
+          <!-- <q-btn flat label="YES" color="primary" @click="deleteWaypointConfirmed" v-close-popup /> -->
+        </q-card-actions>
+      </q-card>
+    </q-dialog>   
+
+    <!-- MODAL: CONFIRM TRACK NAME CHANGED-->
+    <q-dialog v-model="confirmName" persistent @keyup.enter="confirmName=false">
+      <q-card class="confirmation-modal">
+        <q-card-section class="row items-center">
+          <q-icon size="3" name="delete" color="primary" text-color="white" />
+          <span class="q-ml-sm">Track name has been changed</span>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="OK" color="primary"  v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- MODAL: CONFIRM DELETE TRACK-->
     <q-dialog v-model="confirm" persistent>
       <q-card class="confirmation-modal">
@@ -122,15 +174,16 @@
           <q-btn flat label="YES" color="primary" @click="deleteTrack" v-close-popup />
         </q-card-actions>
       </q-card>
-    </q-dialog>     
+    </q-dialog>    
 </template>
 
 
 <script>
-import { computed, defineComponent, ref } from 'vue'
+import { computed, onUpdated, defineComponent, ref } from 'vue'
 import { useStore } from 'vuex'
 import draggable from "vuedraggable";
 import EditWaypoint from './EditWaypoint.vue';
+import { formatDateTime } from '../js/utils.js'
 
 export default defineComponent({
   name: 'GpxList',
@@ -147,17 +200,27 @@ export default defineComponent({
     'clickWaypoint',
     'deleteWaypoint',
     'editWaypoint',
-    'deleteTrack'
+    'deleteTrack',
+    'editTrackTimestamp',
+    'editTrackName'
   ],
 
   setup(props, context){
     const draggable = ref(false)
     const confirm = ref(false)
+    const confirmName = ref(false)
+    const showModalInfo = ref(false)
+    const trackName = ref()
+
     let deleteTrackId = null
     let startLoc = 0
     let dragging = false
     let over = {}
     let dragFrom = {}
+
+    onUpdated(() => {
+      trackName.value = trackInfo.value.name
+    })
 
     const $store = useStore()
 
@@ -170,6 +233,17 @@ export default defineComponent({
       set(newValue) {
         $store.commit('main/newOrder', newValue)
         context.emit('finishDrag')
+      }
+    })
+
+    const trackInfo = computed(() => {
+      const INFO = $store.getters['main/getActiveLayerInfo']
+      const sDate = formatDateTime(new Date(INFO.startTime * 1000))
+      const eDate = formatDateTime(new Date(INFO.endTime * 1000))
+      return  {
+        startTime: sDate,
+        endTime: eDate,
+        name: INFO.name
       }
     })
 
@@ -246,6 +320,11 @@ export default defineComponent({
       deleteTrackId = layerId
     }
 
+    const editTrackTimestamp = () => {
+      context.emit('editTrackTimestamp', deleteTrackId)
+      deleteTrackId = null
+    }
+
     const deleteTrack = () => {
       context.emit('deleteTrack', deleteTrackId)
       deleteTrackId = null
@@ -254,6 +333,20 @@ export default defineComponent({
     const cancelDeleteTrack = () => {
       confirm.value = false
       deleteTrackId = null
+    }
+
+    const editTrackName = () => {
+      $store.commit('main/setActiveLayerInfo', {name: trackName.value})
+      context.emit('editTrackName', {layerId: activeLayerId.value, name: trackName.value})
+    }
+
+    const inputLoseFocus = (layerId) => {
+      document.getElementById('OKButton').focus()
+    }
+
+    const modalTrackInfo = (layerId) => {
+      $store.commit('main/setActiveLayer', layerId)
+      showModalInfo.value = true
     }
 
     const showWaypointInfo = (layerId, waypointId, name) => {
@@ -267,6 +360,7 @@ export default defineComponent({
 
     return {
       data,
+      showModalInfo,
       showWaypointInfo,
       deletePoint,
       editWaypoint,
@@ -284,9 +378,16 @@ export default defineComponent({
       zoomToLayer,
       changeColor,
       confirm,
+      confirmName,
       deleteTrack,
       confirmDeleteTrack,
-      cancelDeleteTrack
+      cancelDeleteTrack,
+      modalTrackInfo,
+      trackInfo,
+      trackName,
+      editTrackTimestamp,
+      editTrackName,
+      inputLoseFocus
     }
   }
 })
@@ -412,5 +513,21 @@ label.active{
 
 .q-dialog .q-card{
   min-width: unset;
+}
+
+.track-info span{
+  margin: 0px 10px;
+}
+
+i.edit{
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border-color: #ccc;
+  background: #ccc;
+  font-size: 110%;
+}
+.track-name{
+  margin-bottom: 10px;
 }
 </style>

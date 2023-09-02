@@ -131,7 +131,7 @@ import LineChart from 'components/LineChart.vue'
 export default defineComponent({
 
   name: 'ModalTrackInfo',
-  emits: ['selected-segment-create-track', 'over-graphic', 'dragOnGraph', 'fillTimeGap'],
+  emits: ['selected-segment-create-track', 'over-graphic', 'dragOnGraph', 'fillTimeGap', 'cancelTrackProfile'],
   components: { LineChart },
   setup(props, context){
     const $store = useStore()
@@ -195,9 +195,7 @@ export default defineComponent({
     }
 
     const cancelTrackProfile = () => {
-      $store.commit('main/setTrackInfo', {})
-      $store.commit('main/setActiveLayer', -1)
-      $store.commit('main/setProfileIsVisible', false)
+      context.emit('cancelTrackProfile')
     }
 
     const clearGraphSelection = () => {

@@ -67,13 +67,17 @@ export function getShowWaypointWindow (state) {
 }
 
 export function getActiveLayerInfo (state) {
+    const result = {}
     const layers = state.TOCLayers
     const active = layers.find((l) => {
         return l.active
     })
 
     if (active){
-        return active.info
+        result.name = active.name
+        result.startTime = active.info.startTime
+        result.endTime = active.info.endTime
+        return result
     } else {
         return null
     }

@@ -132,7 +132,7 @@ export class TrackJoin {
       } else {
           this.originCoords = this.joinLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
       }
-      this.selectedLayersId.push(this.selectedLayer.get('id'))
+      this.selectedLayersId.push(this.selectedLayer.get('parentId'))
     }
   }
 
@@ -223,7 +223,6 @@ export class TrackJoin {
   }
 
   finish(e) {
-    console.log('finished!')
     e.stopPropagation()
     var firstLayerSelected = this.selectedLayersId[0]
     var coords = this.joinLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()

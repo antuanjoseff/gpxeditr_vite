@@ -94,8 +94,9 @@ export class NodesInfo {
       throttleTime: 0
     })
 
+    
     this.layerSelector.on()
-
+    
     this.map.once('layer-selected', async function(e) {
       var strokeWidth = 5
       _this.selectedLayer = e.layer   
@@ -107,8 +108,7 @@ export class NodesInfo {
       _this.initCoords = coords
       _this.nodesSource = _this.getNodesSource(coords)
       _this.nodesLayer.setSource(_this.nodesSource)
-      console.log(_this.nodesLayer.get('id'))
-
+      
       _this.map.addLayer(_this.nodesLayer)
       _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
       _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
@@ -159,6 +159,7 @@ export class NodesInfo {
     this.bindPointerMove = undefined
     this.bindClick = undefined
     this.selectedLayer = undefined
+    this.selectedLayerId = undefined
     this.startPoint = undefined
     this.endPoint = undefined
     this.startIndex = undefined

@@ -69,7 +69,6 @@ export class TrackCutter {
     setTimeout(async () => {
       var _this = this
       if (_this.pause) return
-      console.log(e.pixel)
       const hit = this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
         _this.layerToCut = layer
         _this.selectedLayerId = layer.get('parentId')
@@ -108,15 +107,22 @@ export class TrackCutter {
   }
 
   done() {
+    let startTime = null, endTime = null
+    if (this.headCoords[0].length > 3) {
+      startTime = this.headCoords[0][3]
+      endTime = this.headCoords[this.headCoords.length - 1][3]
+    }    
+
+    // Modify feature of type linestring
+    // this.getLinestringFromLayerToCut().getGeometry().setCoordinates(this.headCoords)
+    this.layerToCut.setStyle(this.layerToCut.getStyle())
+    this.layerToCut.set('name', 'Cap retallat')
+    
     this.callback(
       this.selectedLayerId,
       this.tailCoords,
       'cut'
     )
-    // Modify feature of type linestring
-    this.getLinestringFromLayerToCut().getGeometry().setCoordinates(this.headCoords)
-    this.layerToCut.setStyle(this.layerToCut.getStyle())
-    this.layerToCut.set('name', 'Cap retallat')
 
     this.reset()
     // this.map.dispatchEvent({

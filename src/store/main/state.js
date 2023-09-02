@@ -2,7 +2,7 @@ export default function () {
   return {
     TOCLayers: [
       // id: 'layerID,'
-      // label: filename,
+      // name: filename,
       // visible: true,
       // active: false,
       // color: '#afadaaa',
@@ -15,8 +15,8 @@ export default function () {
       //   endTime: null,
       //   elevationGain: null,
       //   elevationLoss: null},
-      //   maxHight: null,
-      //   minHight; null
+      //   maxHeight: null,
+      //   minHeight; null
       // }
     ],
     zoom: undefined,

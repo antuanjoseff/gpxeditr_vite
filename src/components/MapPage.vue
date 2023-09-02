@@ -153,7 +153,10 @@ import { waypointStyle, waypointSelectedStyle } from 'src/js/MapStyles.js';
 
 
 export default {
-  setup() {
+  emits:[
+    'trackNameChanged'
+  ],
+  setup(props, context){
     let activeLayerCoords = undefined
     const $store = useStore()
     const center = ref(transform([ 2.92298, 41.93445 ], 'EPSG:4326', 'EPSG:3857'))
@@ -386,7 +389,6 @@ export default {
     }
     function clickOnMap(event) {
       // In case clicked on nogthing
-      console.log(event)
       resetSelected()
     }
 
@@ -431,10 +433,9 @@ export default {
         return {id: f.get('id'), name: f.get('name')}
       })
       wpNames.sort(compare)
-      $store.commit('main/activeLayerId',  layerId)
       $store.commit('main/addLayerToTOC', {
         id: layerId,
-        label: layerGroup.get('name'),
+        name: layerGroup.get('name'),
         visible: true,
         active: true,
         color: layerGroup.get('col'),
@@ -447,6 +448,7 @@ export default {
           endTime: layerGroup.get('endTime')
         }
       })
+      $store.commit('main/activeLayerId', layerId)
     }
 
     onMounted(() => {
@@ -583,6 +585,7 @@ export default {
     }
 
     const activateNodesInfo = () => {
+      console.log(activeLayerId.value)
       if (activeLayerId.value) {
         const layerGroup = findLayer(activeLayerId.value)
         const layer = getLayerFromLayerGroup(layerGroup, 'track')        
@@ -693,15 +696,36 @@ export default {
     }
 
     const addNewSegment = function (groupLayerId, coords, type) {
-      const layer = findLayer(groupLayerId)
-      const filename = layer.get('name') + '(' + type + ')'
+      let startTime = null, endTime = null
+      const groupLayer = findLayer(groupLayerId)
+      const trackLayer = getLayerFromLayerGroup(groupLayer, 'track')           
+      var layerCoords = trackLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+
+      if (layerCoords[0].length > 3) {
+        startTime = layerCoords[0][3]
+        endTime = layerCoords[layerCoords.length - 1][3]
+      }
+
+      groupLayer.set('startTime', startTime)
+      groupLayer.set('endTime', endTime)
+
+      $store.commit('main/setTOCLayerInfo', {layerId: groupLayerId, info: {startTime, endTime}})
+
+      const filename = groupLayer.get('name') + '(' + type + ')'
       const trackinfo = tools.info.getInfoFromCoords(coords, groupLayerId)
       const layerId = newLayerId()
 
+      if (coords[0].length > 3){
+        startTime = coords[0][3]
+        endTime = coords[coords.length - 1][3]
+      }
+      
       const layerGroup = new LayerGroup({
         id: layerId,
         name: filename,
         dist: trackinfo.distance,
+        startTime: startTime,
+        endTime: endTime,
         elevation: trackinfo.elevation,
         time: trackinfo.time,        
         layers: [
@@ -733,12 +757,17 @@ export default {
         id: layerId,
         label: filename,
         visible: true,
-        active: false,
         color: gColors.getColor(),
         zindex: layerId,
         waypoints: [],
-        waypointsVisible: true
+        waypointsVisible: true,
+        info: {
+          dist: trackinfo.distance,
+          startTime,
+          endTime
+        }
       })
+      $store.commit('main/activeLayerId', layerId)
       map.value.map.addLayer(layerGroup)
     }
 
@@ -798,10 +827,10 @@ export default {
       let invers = new TrackInvers(map.value.map, {
         // activeLayer,
         // coords: activeLayer.getSource().getFeatures()[0].getGeometry().getCoordinates(),
-        callback: function (newCoords, activeLayer) {
+        callback: function (newCoords, layer) {
           let index = 0
           let animation
-          let increment
+          let increment, startTime = null, endTime = null
           const n = newCoords.length
           const duration = 1000
           let nLoops = duration / 50 // 50ms between
@@ -815,9 +844,13 @@ export default {
             }
           }
 
-          activeLayer.setStyle(previousSelectedStyle)
-          activeLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(newCoords)
-
+          layer.setStyle(previousSelectedStyle)
+          layer.getSource().getFeatures()[0].getGeometry().setCoordinates(newCoords)
+          if (coords[0].length > 3){
+            startTime = coords[0][3]
+            endTime = coords[coords.length - 1][3]
+          }
+          layer.set('info', {dist: layer.get('info').dist, startTime, endTime})
           animation = setInterval(addCoord, 50)
         }
       })
@@ -957,6 +990,12 @@ export default {
       showInput.value = false
     } 
 
+    const editTrackName = ({layerId, name}) => {
+      const layer = findLayer(layerId)
+      layer.set('name', name)
+      context.emit('trackNameChanged')
+    } 
+
     const deleteTrack = (layerId) => {
       const layer = findLayer(layerId)
       $store.commit('main/removeLayerFromTOC', layerId)
@@ -1070,6 +1109,7 @@ export default {
     const modifyTimestamp = () => {
       const mode = editTimestampMode.value
       const layerGroup = findLayer(activeLayerId.value)
+
       const layer = getLayerFromLayerGroup(layerGroup, 'track')
       const coords = layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
       const selectedTime = new Date(model.value)
@@ -1081,6 +1121,7 @@ export default {
       } else {
         trackTime = new Date(coords[0][3])
       }
+      
       // Get elapsed SECONDS between two dates. 
       const incTime  = (selectedTime.getTime() / 1000) - trackTime.getTime()
 
@@ -1095,6 +1136,13 @@ export default {
         // return transform([e[0], e[1]], src, dest)
         return [e[0].toFixed(3), e[1].toFixed(3)]
       })
+      $store.commit('main/setActiveLayerInfo', {
+        info: {
+          startTime: edited[0][3],
+          endTime: edited[edited.length - 1][3]
+        }
+      })
+
       // const chunkSize = 100;
       // var chunks = lineChunk(lineString(ed), chunkSize, { units: "meters" });
 
@@ -1173,7 +1221,8 @@ export default {
       coordsContainer,
       activeTrackStartTime,
       activeTrackEndTime,
-      deleteTrack
+      deleteTrack,
+      editTrackName
     };
   },
 };
