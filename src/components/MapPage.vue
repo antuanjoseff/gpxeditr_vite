@@ -957,6 +957,12 @@ export default {
       showInput.value = false
     } 
 
+    const deleteTrack = (layerId) => {
+      const layer = findLayer(layerId)
+      $store.commit('main/removeLayerFromTOC', layerId)
+      map.value.map.removeLayer(layer)
+    } 
+
     const editTimestamp = (mode) => {
       showModalDateTime.value = true
       editTimestampMode.value = mode
@@ -1166,7 +1172,8 @@ export default {
       map,
       coordsContainer,
       activeTrackStartTime,
-      activeTrackEndTime
+      activeTrackEndTime,
+      deleteTrack
     };
   },
 };

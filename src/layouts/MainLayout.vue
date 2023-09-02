@@ -164,6 +164,7 @@
           @clickWaypoint="clickWaypoint"
           @deleteWaypoint="deleteWaypoint"
           @editWaypoint="editWaypoint"
+          @deleteTrack="deleteTrack"
         />
       </q-list>
     </q-drawer>
@@ -385,6 +386,10 @@ export default defineComponent({
       GRAPH.value.clearGraphSelection()
     }
   
+    const deleteTrack = (layerId) => {
+      MAP.value.deleteTrack(layerId)
+    }
+  
     const clickWaypoint = ({layerId, waypointId, name}) => {
       MAP.value.selectWaypoint(layerId, waypointId, name)
     }
@@ -439,7 +444,8 @@ export default defineComponent({
       toggleLeftDrawer () {
         leftDrawerOpen.value = !leftDrawerOpen.value
       },
-      activeLayerId
+      activeLayerId,
+      deleteTrack
     }
   }
 })

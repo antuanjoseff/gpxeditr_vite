@@ -10,16 +10,11 @@ export function addLayerToTOC ( state, payload ) {
     state.numLayers = state.TOCLayers.length
 }
 
-export function removeTOCLayer ( state, searchId ) {
+export function removeLayerFromTOC ( state, searchId ) {
     const index = state.TOCLayers.findIndex((l)=> {
         return l.id === searchId
     })
     state.TOCLayers.splice(index,1)
-}
-
-export function removeLayerFromTOC ( state, index ) {
-    state.TOCLayers.splice(index, 1)
-    state.numLayers = state.TOCLayers.length
 }
 
 export function toggleLayer ( state, payload ) {

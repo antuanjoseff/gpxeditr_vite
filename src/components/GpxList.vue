@@ -1,4 +1,3 @@
-
 <template>
   <div v-if="data.length">
     <draggable
@@ -15,6 +14,22 @@
           <q-item tag="div" v-ripple class="q-pr-xs" style="align-items: center;">
             <q-item-section style="flex-grow: 5;">
               <div class="flex row">
+                <div @click.stop>
+                  <div>
+                    <input
+                      :id="'color-picker_' + element.id"
+                      type="color"
+                      value="element.color"
+                      @input="changeColor($event, element.id)" hidden
+                    />
+                  </div>
+                  <label :for="'color-picker_' + element.id">
+                    <q-icon
+                      class="toc-layer-icon palette q-mr-sm"
+                      :style="{color:element.color,background:element.color}"
+                      name="square"/>
+                  </label>
+                </div>                       
                 <q-icon
                   v-if="element.visible==true"
                   class="toc-layer-icon q-mr-sm"
@@ -38,23 +53,12 @@
                   class="toc-layer-icon q-mr-sm off gps_off"
                   name="gps_off"
                   @click.stop.prevent="toggleVisibility(element, element.id, 'waypoints')"
-                />                
-                <div @click.stop>
-                  <div>
-                    <input
-                      :id="'color-picker_' + element.id"
-                      type="color"
-                      value="element.color"
-                      @input="changeColor($event, element.id)" hidden
-                    />
-                  </div>
-                  <label :for="'color-picker_' + element.id">
-                    <q-icon
-                      class="toc-layer-icon palette q-mr-sm"
-                      :style="{color:element.color,background:element.color}"
-                      name="square"/>
-                  </label>
-                </div>                
+                />                        
+                <q-icon
+                  class="toc-layer-icon q-mr-sm off delete"
+                  name="delete"
+                  @click.stop.prevent="confirmDeleteTrack(element.id)"
+                />                        
               </div>
               <div>
                 <q-item-label
@@ -104,7 +108,21 @@
   <edit-waypoint 
     @deleteWaypoint="deletePoint" 
     @editWaypoint="editWaypoint" 
-  />
+  />  
+    <!-- MODAL: CONFIRM DELETE TRACK-->
+    <q-dialog v-model="confirm" persistent>
+      <q-card class="confirmation-modal">
+        <q-card-section class="row items-center">
+          <q-icon size="3" name="delete" color="primary" text-color="white" />
+          <span class="q-ml-sm">Do you really want to delete this track?</span>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" v-close-popup @click="cancelDeleteTrack" />
+          <q-btn flat label="YES" color="primary" @click="deleteTrack" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>     
 </template>
 
 
@@ -128,11 +146,14 @@ export default defineComponent({
     'track-profile',
     'clickWaypoint',
     'deleteWaypoint',
-    'editWaypoint'
+    'editWaypoint',
+    'deleteTrack'
   ],
 
   setup(props, context){
     const draggable = ref(false)
+    const confirm = ref(false)
+    let deleteTrackId = null
     let startLoc = 0
     let dragging = false
     let over = {}
@@ -220,6 +241,21 @@ export default defineComponent({
       context.emit('editWaypoint', payload)
     }
 
+    const confirmDeleteTrack = (layerId) => {
+      confirm.value = true
+      deleteTrackId = layerId
+    }
+
+    const deleteTrack = () => {
+      context.emit('deleteTrack', deleteTrackId)
+      deleteTrackId = null
+    }
+
+    const cancelDeleteTrack = () => {
+      confirm.value = false
+      deleteTrackId = null
+    }
+
     const showWaypointInfo = (layerId, waypointId, name) => {
       $store.commit('main/setSelectedWaypoint', {
           layerId,
@@ -246,7 +282,11 @@ export default defineComponent({
       setActiveLayer,
       toggleVisibility,
       zoomToLayer,
-      changeColor
+      changeColor,
+      confirm,
+      deleteTrack,
+      confirmDeleteTrack,
+      cancelDeleteTrack
     }
   }
 })
@@ -368,5 +408,9 @@ label.active{
 .track-waypoints-container.hide{
   max-height: 0px;
   transition: max-height .5s ease-out;
+}
+
+.q-dialog .q-card{
+  min-width: unset;
 }
 </style>
