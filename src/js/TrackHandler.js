@@ -80,7 +80,7 @@ export class TrackHandler {
 
   prepareTrack(geom, waypoints, filename) {
     var vectorSource
-    let dist = 0
+    let dist = 0, startTime = null, endTime = null
     let nCoords = 0
 
     const f = new Feature({
@@ -102,12 +102,19 @@ export class TrackHandler {
         nCoords++
     }
 
-    var layerGroup = this.newLayerGroup(filename, dist, nCoords, vectorSource, waypoints)
+    // Get start and end time
+    if (coords[0].length > 3) {
+      startTime = coords[0][3]
+      endTime = coords[coords.length - 1][3]
+    }
+    
+    const info = { dist, startTime, endTime }
+    var layerGroup = this.newLayerGroup(filename, info, nCoords, vectorSource, waypoints)
     this.map.addLayer(layerGroup)
     this.callback(layerGroup)
   }
 
-  newLayerGroup(filename, dist, nCoords, vectorSource, waypoints) {
+  newLayerGroup(filename, info, nCoords, vectorSource, waypoints) {
     const layerId = newLayerId(this.map)
     const newStyle = styleLine()
     const layerGroup = new LayerGroup({
@@ -115,7 +122,9 @@ export class TrackHandler {
         col: newStyle.getStroke().getColor(),
         type: 'group',
         name: filename,
-        dist: dist,
+        dist: info.dist,
+        startTime: info.startTime,
+        endTime: info.endTime,
         nCoords: nCoords,
         layers: [
           // TRACK

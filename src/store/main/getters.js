@@ -65,3 +65,16 @@ export function profileIsVisible (state) {
 export function getShowWaypointWindow (state) {
     return state.showWaypointWindow
 }
+
+export function getActiveLayerInfo (state) {
+    const layers = state.TOCLayers
+    const active = layers.find((l) => {
+        return l.active
+    })
+
+    if (active){
+        return active.info
+    } else {
+        return null
+    }
+}

@@ -9,7 +9,15 @@ export default function () {
       // zindex: 10,
       // waypoints: [],
       // waypointsVisible: true
-
+      // info: {
+      //   distance:null,
+      //   startTime: null,
+      //   endTime: null,
+      //   elevationGain: null,
+      //   elevationLoss: null},
+      //   maxHight: null,
+      //   minHight; null
+      // }
     ],
     zoom: undefined,
     numLayers: 0,

@@ -1,5 +1,8 @@
 export function addLayerToTOC ( state, payload ) {
     // Add new array on top of previous ones
+    state.TOCLayers.forEach((l) => {
+        l.active = false
+    })
     state.TOCLayers.unshift(payload)
     state.TOCLayers.forEach((e, i) => {
         e.index = i

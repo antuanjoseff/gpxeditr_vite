@@ -34,7 +34,7 @@
         title="Activa capa"
         @click="editTimestamp('start')"
       >
-        Change timestamp from starting date and time
+        Change timestamp from starting date and time ({{ activeTrackStartTime}})
       </q-item-section>
     </q-item>
   </q-list>
@@ -44,7 +44,7 @@
         title="Activa capa"
         @click="editTimestamp('end')"
       >
-        Change timestamp from ending date and time
+        Change timestamp from ending date and time ({{ activeTrackEndTime}})
       </q-item-section>
     </q-item>
   </q-list>
@@ -146,10 +146,10 @@ import LineString from 'ol/geom/LineString.js';
 import { transform, transformExtent } from 'ol/proj.js'
 import {containsXY} from 'ol/extent';
 import { addTrack, addTrackFromFile } from '../js/maputils.js'
+import { formatDateTime } from '../js/utils.js'
 import { TrackHandler  } from '../js/TrackHandler.js'
 import { waypointStyle, waypointSelectedStyle } from 'src/js/MapStyles.js';
-import lineString from "turf-linestring";
-import lineChunk from '@turf/line-chunk';
+
 
 
 export default {
@@ -194,22 +194,6 @@ export default {
         })
       })
     }
-
-    // const crossStyle = (f) => {
-    //   return new Style({
-    //     ZIndex: 20,
-    //     image: new Icon({
-    //       anchor: [0, 1],
-    //       src: 'flag.svg',
-    //       scale: [0.05, 0.05]        
-    //     }),
-    //     text: new Text({
-    //       text: f.get('name'),
-    //       offsetY : 10,
-    //       offsetX: 5
-    //     })
-    //   })
-    // }
 
     const selectedStyle = new Style({
       fill: new Fill({
@@ -283,6 +267,16 @@ export default {
 
     const toleranceForElevationGain = computed(() => {
       return $store.getters['main/toleranceForElevationGain']
+    })
+
+    const activeTrackStartTime = computed(() => {
+      const value = $store.getters['main/getActiveLayerInfo'].startTime
+      return formatDateTime(new Date(value*1000))
+    })
+
+    const activeTrackEndTime = computed(() => {
+      const value = $store.getters['main/getActiveLayerInfo'].endTime
+      return formatDateTime(new Date(value*1000))
     })
 
     const layerIsActive = computed(() => {
@@ -442,11 +436,16 @@ export default {
         id: layerId,
         label: layerGroup.get('name'),
         visible: true,
-        active: false,
+        active: true,
         color: layerGroup.get('col'),
         zindex: map.value.map.getLayers().values_.length,
         waypoints: wpNames,
-        waypointsVisible: true
+        waypointsVisible: true,
+        info: {
+          dist: layerGroup.get('dist'),
+          startTime: layerGroup.get('startTime'),
+          endTime: layerGroup.get('endTime')
+        }
       })
     }
 
@@ -1165,7 +1164,9 @@ export default {
       zoom,
       rotation,
       map,
-      coordsContainer
+      coordsContainer,
+      activeTrackStartTime,
+      activeTrackEndTime
     };
   },
 };
