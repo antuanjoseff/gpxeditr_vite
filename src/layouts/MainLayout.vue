@@ -201,7 +201,8 @@
 
 <script>
 import { defineComponent, computed, ref, watch } from 'vue'
-import { useStore } from 'vuex'
+// import { useStore } from 'vuex'
+import { useAppStore } from '../stores/appStore.js'
 import GpxList from 'components/GpxList.vue'
 import MapPage from 'components/MapPage.vue'
 import ModalTrackInfo from 'src/components/ModalTrackInfo.vue'
@@ -219,19 +220,20 @@ export default defineComponent({
     const GPX = ref()
     const GRAPH = ref()
     const leftDrawerOpen = ref(false)
-    const $store = useStore()
+    // const $store = useStore()
+    const appStore = useAppStore()
     const MAP = ref()
 
     const mapZoom = computed(() => {
-      return $store.getters['main/getZoom']
+      return appStore.getZoom
     })
 
     const backClass = computed(() => {
-      return (activeTool.value === 'draw' && $store.getters['main/numberOfDrawnParts'] > 0) ? 'enabled' : 'disabled'
+      return (activeTool.value === 'draw' && appStore.getNumberOfDrawnParts > 0) ? 'enabled' : 'disabled'
     })
 
     const backHandDrawClass = computed(() => {
-      return (activeTool.value === 'handDraw' && $store.getters['main/numberOfDrawnParts'] > 0) ? 'enabled' : 'disabled'
+      return (activeTool.value === 'handDraw' && appStore.getNumberOfDrawnParts > 0) ? 'enabled' : 'disabled'
     })
 
     const drawClass = computed(() => {
@@ -270,24 +272,24 @@ export default defineComponent({
     })
 
     const activeTool = computed(() => {
-      return $store.getters['main/activeTool']
+      return appStore.activeTool
     })
 
     const activeLayerId = computed(() => {
-      return $store.getters['main/activeLayerId']
+      return appStore.getActiveLayerId
     })
 
     const numberOfLayers = computed(() => {
-      return $store.getters['main/numLayers']
+      return appStore.getNumLayers
     })
 
 
     const activeLayerDimensions = computed(() => {
-      return $store.getters['main/activeLayerDimensions']
+      return appStore.getActiveLayerDimensions()
     })
 
     const existsLayers = computed(() => {
-      return $store.getters['main/TOCLayers'].length
+      return appStore.getTOCLayers.length
     })
 
     watch(numberOfLayers, ( newValue, oldValue ) => {
@@ -328,7 +330,6 @@ export default defineComponent({
       const reader = new FileReader();
       reader.onload = function(e) {
         var contents = e.target.result;
-        // MAP.value.addTrackFromFile(MAP.value.map, $store, contents, file.name)
         MAP.value.openFile(contents, file.name)
       };
       reader.readAsText(file);
@@ -343,7 +344,7 @@ export default defineComponent({
 
       // Otherwise
       const newState = (activeTool.value === name) ? '' : name
-      $store.commit('main/activeTool', newState)
+      appStore.setActiveTool(newState)
       if (newState !== '') {
         MAP.value.activateTool(name)
       } else {
@@ -397,9 +398,9 @@ export default defineComponent({
     }
   
     const cancelTrackProfile = () => {
-      $store.commit('main/setTrackInfo', {})
-      $store.commit('main/setActiveLayer', -1)
-      $store.commit('main/setProfileIsVisible', false)
+      appStore.setTrackInfo({})
+      appStore.setActiveLayer(-1)
+      appStore.setProfileIsVisible(false)
       MAP.value.deactivateTool('info')
       // MAP.value.activateTool('info')
     }
@@ -429,11 +430,6 @@ export default defineComponent({
       GPX.value.inputLoseFocus()
     }
   
-    // const setActiveLayer = (index) => {
-    //   $store.commit('main/activeLayerId', index)
-    //   $store.commit('main/setActiveLayer', index)
-    // }
-
     return {
       GRAPH,
       clickWaypoint,

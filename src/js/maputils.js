@@ -6,7 +6,7 @@ import Feature from 'ol/Feature.js';
 import { Distance } from './utils.js';
 import {Group as LayerGroup } from 'ol/layer.js'
 
-const addTrack = (MAP, $store, geom, type, filename) => {
+const addTrack = (MAP, appStore, geom, type, filename) => {
     var layerStyle
     var vectorSource
     let dist = 0
@@ -30,7 +30,7 @@ const addTrack = (MAP, $store, geom, type, filename) => {
         }
     }
 
-    addNewLayerToMap(MAP, $store, filename, dist, nCoords, vectorSource)
+    addNewLayerToMap(MAP, appStore, filename, dist, nCoords, vectorSource)
 }
 
 const newLayerId = (MAP) => {
@@ -41,7 +41,7 @@ const lastLayerId = (MAP) => {
   return MAP.getLayers().array_.length
 }
 
-const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) => {
+const addNewLayerToMap = (MAP, appStore, filename, dist, nCoords, vectorSource) => {
     const layerId = newLayerId(MAP)
     const newStyle = styleLine()
     const layerGroup = new LayerGroup({
@@ -70,7 +70,7 @@ const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) =>
     })
     var c = newStyle.getStroke().getColor()
     
-    $store.commit('main/addLayerToTOC', {
+    appStore.addLayerToTOC({
         id: layerId,
         name: filename,
         visible: true,
@@ -82,13 +82,13 @@ const addNewLayerToMap = (MAP, $store, filename, dist, nCoords, vectorSource) =>
     })
 
     MAP.addLayer(layerGroup)
-    $store.commit('main/numLayers', layerId)
-    $store.commit('main/activeLayerId', layerId)
+    appStore.setNumLayers(layerId)
+    appStore.setActiveLayerId(layerId)
     // Better extend map to fit new layer
     MAP.getView().fit(vectorSource.getExtent())    
 }
 
-const addTrackFromFile= (MAP, $store, contents, filename) => {
+const addTrackFromFile= (MAP, appStore, contents, filename) => {
   var pointFeatures = [], trackFeature = []
 
   // var MAP = mapRef.map
@@ -114,12 +114,12 @@ const addTrackFromFile= (MAP, $store, contents, filename) => {
             const lns = f.getGeometry().getLineStrings()
             var name = filename
             lns.forEach((linestring) => {
-              addTrack(MAP, $store, linestring, 'linestring', filename )
+              addTrack(MAP, appStore, linestring, 'linestring', filename )
               filename = name + '(' + counter++ + ')'
             })
           }  else {
             if (f.getGeometry().getType().toLowerCase() === 'linestring') {
-              addTrack(MAP, $store, f.getGeometry(), 'linestring', filename )
+              addTrack(MAP, appStore, f.getGeometry(), 'linestring', filename )
               filename = name + '(' + counter++ + ')'
             }
           }

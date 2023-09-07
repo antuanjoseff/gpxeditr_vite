@@ -125,7 +125,7 @@
 
 <script>
 import { defineComponent, computed, ref } from 'vue'
-import { useStore } from 'vuex'
+import { useAppStore } from '../stores/appStore.js'
 import LineChart from 'components/LineChart.vue'
 
 export default defineComponent({
@@ -134,31 +134,31 @@ export default defineComponent({
   emits: ['selected-segment-create-track', 'over-graphic', 'dragOnGraph', 'fillTimeGap', 'cancelTrackProfile'],
   components: { LineChart },
   setup(props, context){
-    const $store = useStore()
+    const appStore = useAppStore()
     const slider = ref(false)
     const LINECHART = ref()
     const sliderValue = ref(false)
     
     const activeTool = computed(() => {
-      return $store.getters['main/activeTool']
+      return appStore.activeTool
     })
 
     const trackHasTimeGaps = computed(() => {
-      return $store.getters['main/ActiveLayerTrackInfo'].gapped
+      return appStore.ActiveLayerTrackInfo.gapped
     })
 
     const profileIsVisible = computed(() => {
-      return $store.getters['main/profileIsVisible']
+      return appStore.getProfileIsVisible
     })
 
     const info = computed(() => {
-      return $store.getters['main/getTrackInfo']
+      return appStore.getTrackInfo
     })
 
     const createTrack = () => {
       console.log('click')
       context.emit('selected-segment-create-track')
-      $store.commit('main/setTrackInfo', {})
+      appStore.setTrackInfo({})
     }
 
     const dragOnGraph = (data) => {
@@ -170,7 +170,7 @@ export default defineComponent({
     }
 
     const updateTolerance = (val) => {
-      $store.commit('main/toleranceForElevationGain', val)
+      appStore.setToleranceForElevationGain(val)
     }
 
     const toggleSlider = () => {

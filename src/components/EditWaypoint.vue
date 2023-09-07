@@ -45,31 +45,31 @@
 <script>
 
 import { onUpdated, computed, defineComponent, ref } from 'vue'
-import { useStore } from 'vuex'
+import { useAppStore } from '../stores/appStore.js'
 
 export default defineComponent({
     name: 'EditWaypoint',
     emits: [ 'edit-waypoint', 'delete-waypoint' ],
     setup(props, context) {
-        const $store = useStore()
+        const appStore = useAppStore()
         const wpName = ref('')
         const confirm = ref(false)
 
         onUpdated(() => {
-            wpName.value = $store.getters['main/getSelectedWaypoint'].name
+            wpName.value = appStore.getSelectedWaypoint.name
         })
         
         const closeModal = () => {
-            $store.commit('main/setshowWaypointWindow', false)
+            appStore.setshowWaypointWindow(false)
             confirm.value = false
         }
         
         const showWaypoint = computed(() => {
-            return $store.getters['main/getShowWaypointWindow']
+            return appStore.getShowWaypointWindow
         })
 
         const selected = computed(() => {
-            return $store.getters['main/getSelectedWaypoint']
+            return appStore.getSelectedWaypoint
         })
     
         const editWaypoint = () => {
@@ -80,7 +80,7 @@ export default defineComponent({
                 name
             }
             context.emit('edit-waypoint', payload)
-            $store.commit('main/editLayerWaypoint', payload)
+            appStore.editLayerWaypoint(payload)
             closeModal()
         }
     

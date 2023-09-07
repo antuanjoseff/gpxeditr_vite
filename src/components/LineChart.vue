@@ -16,7 +16,7 @@
 <script>
 import { Line as LineChart } from 'vue-chartjs'
 import { ref, watch, nextTick, onMounted, onUnmounted, computed, defineComponent } from 'vue'
-import { useStore } from 'vuex'
+import { useAppStore } from '../stores/appStore.js'
 import { Chart, Tooltip, registerables } from 'chart.js'
 
 Chart.register(...registerables)
@@ -30,7 +30,7 @@ export default defineComponent({
   props: ['height'],
   emits: ['overGraphic', 'outGraphic', 'dragOnGraph'],
   setup(props, { emit }) {
-    const $store = useStore()
+    const appStore = useAppStore()
     const CHART = ref()
     var startIndex, endIndex
     var canvas, overlay, chart
@@ -39,7 +39,7 @@ export default defineComponent({
     var cleanRequired = false
 
     const graphSelectedRange = computed(() => {
-      return $store.getters['main/graphSelectedRange']
+      return appStore.getGraphSelectedRange
     })
 
     const resizeHandler = () => {
@@ -72,7 +72,7 @@ export default defineComponent({
     }
 
     const clearGraphSelection = () => {
-      $store.commit('main/segmentIsSelected', false)
+      appStore.setSegmentIsSelected(false)
       drag = false
       cleanRequired = false
       const rect = canvas.getBoundingClientRect();
@@ -125,7 +125,7 @@ export default defineComponent({
           drag = false;
           cleanRequired = true
           endIndex = points[0].index;
-          $store.commit('main/segmentIsSelected', true)
+          appStore.setSegmentIsSelected(true)
         }
       })
 
@@ -165,7 +165,7 @@ export default defineComponent({
       })
 
 
-       $store.commit('main/segmentIsSelected', true)
+       appStore.setSegmentIsSelected(true)
 
         watch(segmentIsSelected, ( newValue, oldValue ) => {
           if (!newValue) {
@@ -183,11 +183,11 @@ export default defineComponent({
 
 
     const segmentIsSelected = computed(() => {
-      return $store.getters['main/segmentIsSelected']
+      return appStore.getSsegmentIsSelected
     })
 
     const dataset = computed(() => {
-      return JSON.parse(JSON.stringify($store.getters['main/graphData'].datasets[0]))
+      return JSON.parse(JSON.stringify(appStore.getGraphData.datasets[0]))
     })
 
     const graphHeight = computed(() => {
@@ -196,19 +196,19 @@ export default defineComponent({
 
     const plugins = ref()
     const elevationData = computed(() => {
-      if ($store.getters['main/graphData'].labels) {
-        return $store.getters['main/graphData'].labels.length
+      if (appStore.getGraphData.labels) {
+        return appStore.getGraphData.labels.length
       } else {
         return 0
       }
     })
 
     const data = computed(() => {
-      return $store.getters['main/graphData']
+      return appStore.getGraphData
     })
 
     const dataLabels = computed(() => {
-      return JSON.parse(JSON.stringify($store.getters['main/graphData'].labels))
+      return JSON.parse(JSON.stringify(appStore.getGraphData.labels))
     })
 
     var ctx = document.getElementById('profile-chart');

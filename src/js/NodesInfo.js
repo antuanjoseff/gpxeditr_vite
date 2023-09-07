@@ -94,26 +94,35 @@ export class NodesInfo {
       throttleTime: 0
     })
 
-    
-    this.layerSelector.on()
-    
-    this.map.once('layer-selected', async function(e) {
-      var strokeWidth = 5
-      _this.selectedLayer = e.layer   
-      _this.selectedLayerId = e.layer.get('parentId')
-      _this.selectedLayer.setStyle(createStyleByStrokeColor(e.layer.get('col'), strokeWidth))
-      _this.layerSelector.off()
-
-      var coords = _this.getLinestringFromLayer(_this.selectedLayer).getGeometry().getCoordinates()
-      _this.initCoords = coords
-      _this.nodesSource = _this.getNodesSource(coords)
-      _this.nodesLayer.setSource(_this.nodesSource)
-      
-      _this.map.addLayer(_this.nodesLayer)
+    // Check first if there is a layer already selected
+    if (!this.selectedLayer) {
+      this.layerSelector.on()
+      this.map.once('layer-selected', async function(e) {
+        var strokeWidth = 5
+        _this.selectedLayer = e.layer   
+        _this.selectedLayerId = e.layer.get('parentId')
+        _this.selectedLayer.setStyle(createStyleByStrokeColor(e.layer.get('col'), strokeWidth))
+        _this.layerSelector.off()
+  
+        var coords = _this.getLinestringFromLayer(_this.selectedLayer).getGeometry().getCoordinates()
+        _this.initCoords = coords
+        _this.nodesSource = _this.getNodesSource(coords)
+        _this.nodesLayer.setSource(_this.nodesSource)
+        
+        _this.map.addLayer(_this.nodesLayer)
+        _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
+        _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
+        _this.sumUp(0, _this.initCoords.length - 1)
+      })      
+    } else {
+      _this.nodesSource = _this.getNodesSource(_this.initCoords)
+      _this.nodesLayer.setSource(_this.nodesSource)      
       _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
       _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
-      _this.sumUp(0, _this.initCoords.length - 1)
-    })
+      _this.sumUp(0, _this.initCoords.length - 1)      
+    }
+    
+    
 
     this.map.addLayer(this.selectedNodeLayer)
     this.map.addLayer(this.selectedSegmentLayer)

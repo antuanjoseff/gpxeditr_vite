@@ -152,7 +152,7 @@ export class TrackHandler {
   callback (filename, dist, nCoords, vectorSource) {
     var c = newStyle.getStroke().getColor()
     
-    $store.commit('main/addLayerToTOC', {
+    appStore.addLayerToTOC({
         id: layerId,
         label: filename,
         visible: true,
@@ -164,8 +164,8 @@ export class TrackHandler {
     })
 
     MAP.addLayer(layerGroup)
-    $store.commit('main/numLayers', layerId)
-    $store.commit('main/activeLayerId', layerId)
+    appStore.numLayers(layerId)
+    appStore.setActiveLayerId(layerId)
     // Better extend map to fit new layer
     MAP.getView().fit(vectorSource.getExtent())    
   }

@@ -126,7 +126,7 @@
 
 <script>
 import { ref, watch, onMounted, computed } from "vue";
-import { useStore } from 'vuex'
+import { useAppStore } from '../stores/appStore.js'
 import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
 import {Group as LayerGroup } from 'ol/layer.js'
@@ -158,7 +158,7 @@ export default {
   ],
   setup(props, context){
     let activeLayerCoords = undefined
-    const $store = useStore()
+    const appStore = useAppStore()
     const center = ref(transform([ 2.92298, 41.93445 ], 'EPSG:4326', 'EPSG:3857'))
     const projection = ref("EPSG:3857")
     const zoom = ref(14)
@@ -269,25 +269,25 @@ export default {
     }
 
     const toleranceForElevationGain = computed(() => {
-      return $store.getters['main/toleranceForElevationGain']
+      return appStore.getToleranceForElevationGain
     })
 
     const activeTrackStartTime = computed(() => {
-      const value = $store.getters['main/getActiveLayerInfo'].startTime
+      const value = appStore.getActiveLayerInfo.startTime
       return formatDateTime(new Date(value*1000))
     })
 
     const activeTrackEndTime = computed(() => {
-      const value = $store.getters['main/getActiveLayerInfo'].endTime
+      const value = appStore.getActiveLayerInfo.endTime
       return formatDateTime(new Date(value*1000))
     })
 
     const layerIsActive = computed(() => {
-      return $store.getters['main/activeLayerId']
+      return appStore.getActiveLayerId
     })
 
     const activeLayerId = computed(() => {
-      return $store.getters['main/activeLayerId']
+      return appStore.getActiveLayerId
     })
 
     const numberArrowbyKm = 1
@@ -316,7 +316,7 @@ export default {
       trackLayer.setStyle(trackLayer.getStyle())
       trackLayer.set('col', color)
 
-      $store.commit('main/changeLayerColor', {
+      appStore.changeLayerColor({
         layerId,
         color
       })
@@ -326,7 +326,7 @@ export default {
       const layerGroup = findLayer(layerId)
       if (!waypoints) {
         layerGroup.setVisible(!layerGroup.getVisible())
-        $store.commit('main/toggleLayer', {
+        appStore.toggleLayer({
           layerId,
           visible: layerGroup.getVisible()
         })
@@ -334,7 +334,7 @@ export default {
         const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
         waypointsLayer.setVisible(!waypointsLayer.getVisible())
         
-        $store.commit('main/toggleLayer', {
+        appStore.toggleLayer({
           layerId,
           waypointsVisible:waypointsLayer.getVisible()
         })        
@@ -348,7 +348,7 @@ export default {
     }
 
     const reorderLayers = function () {
-      const lProperties = $store.getters['main/TOCLayers']
+      const lProperties = appStore.getTOCLayers
       lProperties.forEach((layer) => {
         const L = findLayer(layer.id)
         L.setZIndex(layer.zindex)
@@ -374,7 +374,7 @@ export default {
 
     function resetSelected() {
       if (toolIsActive) return
-      const selected = $store.getters['main/getSelectedWaypoint']
+      const selected = appStore.getSelectedWaypoint
       if (selected.layerId) {      
         const layerGroup = findLayer(selected.layerId)        
         const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
@@ -384,7 +384,7 @@ export default {
       if (activeLayer) {
         activeLayer.setStyle(previousSelectedStyle)
         activeLayer = false
-        $store.commit('main/activeLayerId', null)
+        appStore.setActiveLayerId(null)
       }
     }
     function clickOnMap(event) {
@@ -433,7 +433,7 @@ export default {
         return {id: f.get('id'), name: f.get('name')}
       })
       wpNames.sort(compare)
-      $store.commit('main/addLayerToTOC', {
+      appStore.addLayerToTOC({
         id: layerId,
         name: layerGroup.get('name'),
         visible: true,
@@ -448,7 +448,7 @@ export default {
           endTime: layerGroup.get('endTime')
         }
       })
-      $store.commit('main/activeLayerId', layerId)
+      appStore.setActiveLayerId(layerId)
     }
 
     onMounted(() => {
@@ -463,13 +463,13 @@ export default {
         rightClickCoords = map.value.map.getEventCoordinate(evt)
       })
 
-      $store.commit('main/setZoom', Math.floor(map.value.map.getView().getZoom()))
+      appStore.setZoom(Math.floor(map.value.map.getView().getZoom()))
 
       map.value.map.on('moveend', updateViewState)
       // map.value.map.on('pointermove', checkPointerMove)
       map.value.map.on('click', clickOnMap)
       map.value.map.on('toolFinished', (event) => {
-        $store.commit('main/activeLayerId', null)
+        appStore.setActiveLayerId(null)
         deactivateTool(event.toolname)
       })
 
@@ -480,7 +480,7 @@ export default {
     const updateViewState = (e) => {
       const newZoom = map.value.map.getView().getZoom()
       if (curZoom < newZoom) {
-        $store.commit('main/setZoom', newZoom)
+        appStore.setZoom(newZoom)
       }
     }
 
@@ -496,7 +496,7 @@ export default {
         }
       }
       // Hide panel info
-      $store.commit('main/setTrackInfo', {})
+      appStore.setTrackInfo({})
       switch (tool) {
         case 'cutter':
           activeCutter()
@@ -527,8 +527,8 @@ export default {
 
     const deactivateTool = (name) => {
       toolIsActive = false
-      $store.commit('main/activeLayerId', false)
-      $store.commit('main/activeTool', '')
+      appStore.setActiveLayerId(false)
+      appStore.setActiveTool()
       resetSelected()
       switch (name) {
         case 'join':
@@ -544,7 +544,7 @@ export default {
           tools.info.deactivate()
           // map.value.map.un('track-info', showTrackData)
           map.value.map.un('unselect-track', unselectSegment)
-          $store.commit('main/setTrackInfo', {
+          appStore.setTrackInfo({
             distance:undefined,
             time:undefined,
             elevation:undefined
@@ -565,9 +565,9 @@ export default {
         var geom = new LineString(e.coords)
         addTrack(map.value.map, $store, geom, 'linestring', 'Drawn layer')
         tools.draw.reset()
-        $store.commit('main/numberOfDrawnParts', 0)
+        appStore.setNumberOfDrawnParts(0)
       } else {
-        $store.commit('main/numberOfDrawnParts', e.nparts)
+        appStore.setNumberOfDrawnParts(e.nparts)
       }
     }
 
@@ -585,23 +585,23 @@ export default {
     }
 
     const activateNodesInfo = () => {
-      console.log(activeLayerId.value)
       if (activeLayerId.value) {
         const layerGroup = findLayer(activeLayerId.value)
         const layer = getLayerFromLayerGroup(layerGroup, 'track')        
         const coords = getCoords(layer)
         tools.info.initCoords = coords
         tools.info.selectedLayerId = activeLayerId.value
+        tools.info.selectedLayer = layer
       }
       tools.info.callback = showTrackData
       tools.info.activate()
-      $store.commit('main/activeTool', 'info')
+      appStore.setActiveTool('info')
       map.value.map.on('unselect-track', unselectSegment)
     }
 
     const unselectSegment = () => {
-      $store.commit('main/segmentIsSelected', false)
-      $store.commit('main/setTrackInfo', $store.getters['main/ActiveLayerTrackInfo'])
+      appStore.setSegmentIsSelected(false)
+      appStore.setTrackInfo(appStore.ActiveLayerTrackInfo)
     }
 
     const updateGraphData = function (payload) {
@@ -615,17 +615,17 @@ export default {
         data.data = payload.data
         data.name = payload.name
       }
-      $store.commit('main/setTrackInfo', data)
-      $store.commit('main/graphSelectedRange', payload.indexes)
-      $store.commit('main/segmentIsSelected', true)
+      appStore.setTrackInfo(data)
+      appStore.setGraphSelectedRange(payload.indexes)
+      appStore.setSegmentIsSelected(true)
     }
 
     const segmentIsSelected = computed(() => {
-      return $store.getters['main/segmentIsSelected']
+      return appStore.getSegmentIsSelected
     })
 
     watch(toleranceForElevationGain, ( newValue, oldValue ) => {
-      const range = $store.getters['main/graphSelectedRange']
+      const range = appStore.getGraphSelectedRange
       tools.info.changeTolerance(newValue, range.first, range.last)
     })
 
@@ -643,9 +643,8 @@ export default {
         return
       } else {
         activeLayerCoords = tools.info.initCoords
-        $store.commit('main/ActiveLayerTrackInfo', payload)
-        $store.commit('main/setProfileIsVisible', true)
-        // $store.commit('main/activeLayerId', payload.layerId)
+        appStore.setActiveLayerTrackInfo(payload)
+        appStore.setProfileIsVisible(true)
       }
       const datasets = []
       if (payload.speed.length) {
@@ -676,7 +675,7 @@ export default {
         pointHoverBackgroundColor: 'black',
         tension: 0.2
       })
-      $store.commit('main/graphData', {
+      appStore.setGraphData({
         labels: payload.distances,
         datasets: datasets
       })
@@ -709,7 +708,7 @@ export default {
       groupLayer.set('startTime', startTime)
       groupLayer.set('endTime', endTime)
 
-      $store.commit('main/setTOCLayerInfo', {layerId: groupLayerId, info: {startTime, endTime}})
+      appStore.setTOCLayerInfo({layerId: groupLayerId, info: {startTime, endTime}})
 
       const filename = groupLayer.get('name') + '(' + type + ')'
       const trackinfo = tools.info.getInfoFromCoords(coords, groupLayerId)
@@ -753,7 +752,7 @@ export default {
         ]
       })
 
-      $store.commit('main/addLayerToTOC', {
+      appStore.addLayerToTOC({
         id: layerId,
         label: filename,
         visible: true,
@@ -767,7 +766,7 @@ export default {
           endTime
         }
       })
-      $store.commit('main/activeLayerId', layerId)
+      appStore.setActiveLayerId(layerId)
       map.value.map.addLayer(layerGroup)
     }
 
@@ -858,7 +857,7 @@ export default {
 
       let handDraw = new HandDraw(map.value.map, {
         coordsCounter: (numberOfCoords) => {
-          $store.commit('main/numberOfDrawnParts', numberOfCoords)
+          appStore.setNumberOfDrawnParts(numberOfCoords)
         },
         callbackDrawFeaure: function (linestring) {
           addTrack(map.value.map, $store, linestring, 'linestring', 'drawn track')
@@ -909,6 +908,8 @@ export default {
       tools.info.callback = showTrackData
       await tools.info.getInfoFromCoords(coords, layerId)
       tools.info.selectedLayersId = layerId
+      tools.info.selectedLayer = layer   
+
       activateNodesInfo()
     }
 
@@ -966,7 +967,7 @@ export default {
         layer.getSource().addFeature(newFeature)
         
         // Add new point to TOC
-        $store.commit('main/addNewWaypoint', {
+        appStore.addNewWaypoint({
           id: newId,
           name: waypointName.value,
           layerId: activeLayerId.value
@@ -998,7 +999,7 @@ export default {
 
     const deleteTrack = (layerId) => {
       const layer = findLayer(layerId)
-      $store.commit('main/removeLayerFromTOC', layerId)
+      appStore.removeLayerFromTOC(layerId)
       map.value.map.removeLayer(layer)
     } 
 
@@ -1044,14 +1045,14 @@ export default {
     }
 
     const selectWaypoint = (layerId, waypointId, name) => {
-      const selectedWaypoint = $store.getters['main/getSelectedWaypoint']
+      const selectedWaypoint = appStore.getSelectedWaypoint
       const layerGroup = findLayer(layerId)
       const waypointsLayer = getLayerFromLayerGroup(layerGroup, 'waypoints')
 
       // If waypoint is already selected, then unselect it
       if (selectedWaypoint.layerId === layerId && selectedWaypoint.waypointId === waypointId) {
         clearWaypointsStyle(waypointsLayer)
-        $store.commit('main/setSelectedWaypoint', {
+        appStore.setSelectedWaypoint({
           layerId: null,
           waypointId: null,
           name: null
@@ -1063,7 +1064,7 @@ export default {
         })
         if (selected) {
           selected.setStyle(waypointSelectedStyle(selected))
-          $store.commit('main/setSelectedWaypoint', {
+          appStore.setSelectedWaypoint({
             layerId,
             waypointId,
             name
@@ -1081,7 +1082,7 @@ export default {
       })
       if (selected) {
         waypointsLayer.getSource().removeFeature(selected)
-        $store.commit('main/removedWaypoint', {
+        appStore.removedWaypoint({
           layerId: layerId,
           waypointId: waypointId
         })
@@ -1093,13 +1094,13 @@ export default {
           }
           waypoints.push({ id: f.get('id'), name: f.get('name') })
         })
-        $store.commit('main/updateLayerWaypoints', { layerId, waypoints })
+        appStore.updateLayerWaypoints({ layerId, waypoints })
       }
       unselectdWaypoint()        
     }
     
     const unselectdWaypoint = () => {
-      $store.commit('main/setSelectedWaypoint', {
+      appStore.setSelectedWaypoint({
         layerId: null,
         waypointId: null,
         name: null
@@ -1109,7 +1110,7 @@ export default {
     const modifyTimestamp = () => {
       const mode = editTimestampMode.value
       const layerGroup = findLayer(activeLayerId.value)
-
+      console.log(activeLayerId.value)
       const layer = getLayerFromLayerGroup(layerGroup, 'track')
       const coords = layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
       const selectedTime = new Date(model.value)
@@ -1136,7 +1137,7 @@ export default {
         // return transform([e[0], e[1]], src, dest)
         return [e[0].toFixed(3), e[1].toFixed(3)]
       })
-      $store.commit('main/setActiveLayerInfo', {
+      appStore.setActiveLayerInfo({
         info: {
           startTime: edited[0][3],
           endTime: edited[edited.length - 1][3]

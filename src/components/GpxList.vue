@@ -180,7 +180,7 @@
 
 <script>
 import { computed, onUpdated, defineComponent, ref } from 'vue'
-import { useStore } from 'vuex'
+import { useAppStore } from '../stores/appStore.js'
 import draggable from "vuedraggable";
 import EditWaypoint from './EditWaypoint.vue';
 import { formatDateTime } from '../js/utils.js'
@@ -222,22 +222,22 @@ export default defineComponent({
       trackName.value = trackInfo.value.name
     })
 
-    const $store = useStore()
+    const appStore = useAppStore()
 
     const data = computed({
       // getter
       get() {
-        return $store.getters['main/TOCLayers']
+        return appStore.getTOCLayers
       },
       // setter
       set(newValue) {
-        $store.commit('main/newOrder', newValue)
+        appStore.newOrder(newValue)
         context.emit('finishDrag')
       }
     })
 
     const trackInfo = computed(() => {
-      const INFO = $store.getters['main/getActiveLayerInfo']
+      const INFO = appStore.getActiveLayerInfo
       const sDate = formatDateTime(new Date(INFO.startTime * 1000))
       const eDate = formatDateTime(new Date(INFO.endTime * 1000))
       return  {
@@ -248,11 +248,11 @@ export default defineComponent({
     })
 
     const activeLayerId = computed(() => {
-      return $store.getters['main/activeLayerId']
+      return appStore.getActiveLayerId
     })
 
     const activeWaypointId = computed(() => {
-      return $store.getters['main/getSelectedWaypoint'].waypointId
+      return appStore.getSelectedWaypoint.waypointId
     })
 
     const toggleVisibility = (layer, layerId, waypoints=false) => {
@@ -272,8 +272,8 @@ export default defineComponent({
     }
 
     const setActiveLayer = (index) => {
-      $store.commit('main/activeLayerId', index)
-      $store.commit('main/setActiveLayer', index)
+      appStore.setActiveLayerId(index)
+      appStore.setActiveLayer(index)
     }
 
     // DRAGGING
@@ -284,7 +284,7 @@ export default defineComponent({
     }
 
     const finishDrag = (item, pos) => {
-      $store.commit('main/ReorderLayers', {
+      appStore.ReorderLayers({
         pos,
         over: over.pos,
       })
@@ -336,7 +336,7 @@ export default defineComponent({
     }
 
     const editTrackName = () => {
-      $store.commit('main/setActiveLayerInfo', {name: trackName.value})
+      appStore.setActiveLayerInfo({name: trackName.value})
       context.emit('editTrackName', {layerId: activeLayerId.value, name: trackName.value})
     }
 
@@ -345,17 +345,17 @@ export default defineComponent({
     }
 
     const modalTrackInfo = (layerId) => {
-      $store.commit('main/setActiveLayer', layerId)
+      appStore.setActiveLayer(layerId)
       showModalInfo.value = true
     }
 
     const showWaypointInfo = (layerId, waypointId, name) => {
-      $store.commit('main/setSelectedWaypoint', {
+      appStore.setSelectedWaypoint({
           layerId,
           waypointId,
           name
       })
-      $store.commit('main/setshowWaypointWindow', true)
+      appStore.setshowWaypointWindow(true)
     }
 
     return {
