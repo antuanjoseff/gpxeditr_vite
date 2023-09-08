@@ -112,6 +112,7 @@ export default defineComponent({
           const points = chart.getElementsAtEventForMode(evt, 'index', {
             intersect: false
           })
+          if (!points) return
           startIndex = points[0].index;
           const rect = canvas.getBoundingClientRect()
           selectionRect.startX = evt.clientX - rect.left
@@ -141,7 +142,7 @@ export default defineComponent({
               const points = chart.getElementsAtEventForMode(evt, 'index', {
                 intersect: false
               })
-
+              if (points.length === 0) return
               endIndex = points[0].index;
               const rect = canvas.getBoundingClientRect();
               selectionRect.w = (evt.clientX - rect.left) - selectionRect.startX;
@@ -165,7 +166,7 @@ export default defineComponent({
       })
 
 
-       appStore.setSegmentIsSelected(true)
+      //  appStore.setSegmentIsSelected(true)
 
         watch(segmentIsSelected, ( newValue, oldValue ) => {
           if (!newValue) {

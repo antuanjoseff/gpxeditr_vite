@@ -178,6 +178,7 @@ export const useAppStore = defineStore('app', {
     },
     
     removeLayerFromTOC (searchId ) {
+      console.log(searchId)
       const index = this.TOCLayers.findIndex((l)=> {
         return l.id === searchId
       })

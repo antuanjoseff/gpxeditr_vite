@@ -194,13 +194,9 @@ export class NodesInfo {
   }
 
   clickSegment(e) {
-    console.log('click segment')
-    // if (this.nextClickCleanSegment) {
-    //   console.log('clean segment')
-    //   this.cleanSegment()
-    //   this.nextClickCleanSegment = false
-    //   return
-    // }
+    this.map.dispatchEvent({
+      type: 'selected-segment'
+    })
     this.sumUp(this.startIndex, this.endIndex)
     const data = this.trackInfo
     const response = this.trackInfo
@@ -239,6 +235,7 @@ export class NodesInfo {
           segmentCoords = this.initCoords.slice(this.startIndex, this.endIndex + 1)
         }
         this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(segmentCoords)
+
         this.sumUp(this.startIndex, this.endIndex)
       }
 
@@ -560,7 +557,7 @@ export class NodesInfo {
   cleanSegment() {
     this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates([[]])
     this.map.dispatchEvent({
-      type: 'track-info'
+      type: 'clean-selected-segment'
     })
   }
 

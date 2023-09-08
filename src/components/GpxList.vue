@@ -238,6 +238,7 @@ export default defineComponent({
 
     const trackInfo = computed(() => {
       const INFO = appStore.getActiveLayerInfo
+      if (!INFO) return {}
       const sDate = formatDateTime(new Date(INFO.startTime * 1000))
       const eDate = formatDateTime(new Date(INFO.endTime * 1000))
       return  {

@@ -83,7 +83,7 @@
                 <!-- CANCEL / CREATE TRACK BUTTONS -->
                 <div style="flex-grow: 1;" class="text-right">
                   <q-btn
-                    v-if="activeTool=='info'"
+                    v-if="activeTool=='info' && trackSegmentIsSelected"
                     color="white"
                     text-color="black"
                     label="Create Track"
@@ -139,6 +139,10 @@ export default defineComponent({
     const LINECHART = ref()
     const sliderValue = ref(false)
     
+    const trackSegmentIsSelected = computed(() => {
+      return appStore.getSegmentIsSelected
+    })
+    
     const activeTool = computed(() => {
       return appStore.activeTool
     })
@@ -156,7 +160,6 @@ export default defineComponent({
     })
 
     const createTrack = () => {
-      console.log('click')
       context.emit('selected-segment-create-track')
       appStore.setTrackInfo({})
     }
@@ -223,6 +226,7 @@ export default defineComponent({
       overGraphic,
       createTrack,
       activeTool,
+      trackSegmentIsSelected,
       seamless: true
     }
   }

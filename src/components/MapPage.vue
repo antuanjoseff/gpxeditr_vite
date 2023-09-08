@@ -465,11 +465,15 @@ export default {
 
       appStore.setZoom(Math.floor(map.value.map.getView().getZoom()))
 
+      map.value.map.on('layer-selected', ({type, layer}) => {
+        appStore.setActiveLayerId(layer.get('parentId'))
+      })
+
       map.value.map.on('moveend', updateViewState)
       // map.value.map.on('pointermove', checkPointerMove)
       map.value.map.on('click', clickOnMap)
       map.value.map.on('toolFinished', (event) => {
-        appStore.setActiveLayerId(null)
+        // appStore.setActiveLayerId(null)
         deactivateTool(event.toolname)
       })
 
@@ -517,7 +521,7 @@ export default {
           activateHandDraw()
           break
         case 'back':
-          tools.draw.back()
+          tools.drshaw.back()
           break
         case 'backHandDraw':
           tools.handDraw.back()
@@ -542,7 +546,7 @@ export default {
           break
         case 'info':
           tools.info.deactivate()
-          // map.value.map.un('track-info', showTrackData)
+          map.value.map.un('selected-segment', showTrackData)
           map.value.map.un('unselect-track', unselectSegment)
           appStore.setTrackInfo({
             distance:undefined,
@@ -596,7 +600,12 @@ export default {
       tools.info.callback = showTrackData
       tools.info.activate()
       appStore.setActiveTool('info')
+      map.value.map.on('selected-segment', selectSegment)
       map.value.map.on('unselect-track', unselectSegment)
+    }
+
+    const selectSegment = () => {
+      appStore.setSegmentIsSelected(true)
     }
 
     const unselectSegment = () => {
@@ -617,7 +626,7 @@ export default {
       }
       appStore.setTrackInfo(data)
       appStore.setGraphSelectedRange(payload.indexes)
-      appStore.setSegmentIsSelected(true)
+      // appStore.setSegmentIsSelected(true)
     }
 
     const segmentIsSelected = computed(() => {
@@ -636,6 +645,7 @@ export default {
     })
 
     const showTrackData = function (payload) {
+      console.log('Function showTrackData MapPage')
       updateGraphData(payload)
       // UPDATE GRAPH DATA
       if (!payload.elevations) {
@@ -694,7 +704,7 @@ export default {
       addNewSegment(fromLayerId, coords, type)
     }
 
-    const addNewSegment = function (groupLayerId, coords, type) {
+    const addNewSegment = async function (groupLayerId, coords, type) {
       let startTime = null, endTime = null
       const groupLayer = findLayer(groupLayerId)
       const trackLayer = getLayerFromLayerGroup(groupLayer, 'track')           
@@ -711,7 +721,9 @@ export default {
       appStore.setTOCLayerInfo({layerId: groupLayerId, info: {startTime, endTime}})
 
       const filename = groupLayer.get('name') + '(' + type + ')'
-      const trackinfo = tools.info.getInfoFromCoords(coords, groupLayerId)
+      console.log(filename)
+      const trackinfo = await tools.info.getInfoFromCoords(coords, groupLayerId)
+      console.log(trackinfo)
       const layerId = newLayerId()
 
       if (coords[0].length > 3){
@@ -754,7 +766,7 @@ export default {
 
       appStore.addLayerToTOC({
         id: layerId,
-        label: filename,
+        name: filename,
         visible: true,
         color: gColors.getColor(),
         zindex: layerId,
@@ -788,7 +800,7 @@ export default {
           dataProjection: 'EPSG:4326'
         }
       );
-      download(text, layerTrack.get('name') + '.gpx');
+      download(text, layerGroup.get('name') + '.gpx');
     };
 
     const download = (data, filename) => {
@@ -872,6 +884,7 @@ export default {
     const drawPointFromGraphic = (index) => {
       window.clearTimeout(debounce);
       var coord = tools.info.initCoords[index]
+      if (!coord) return 
       tools.info.setSelectedNode(coord)
       var extent = map.value.map.getView().calculateExtent(map.value.map.getSize())
       if (!containsXY(extent, coord[0], coord[1])) {
@@ -999,8 +1012,8 @@ export default {
 
     const deleteTrack = (layerId) => {
       const layer = findLayer(layerId)
-      appStore.removeLayerFromTOC(layerId)
       map.value.map.removeLayer(layer)
+      appStore.removeLayerFromTOC(layerId)
     } 
 
     const editTimestamp = (mode) => {

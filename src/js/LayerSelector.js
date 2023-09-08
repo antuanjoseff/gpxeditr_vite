@@ -52,6 +52,7 @@ export class LayerSelector {
         type: 'layer-selected',
         layer: this.selectedLayer
       })
+
       this.off()
     }
   }
