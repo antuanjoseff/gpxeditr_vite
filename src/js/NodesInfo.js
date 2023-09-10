@@ -21,10 +21,10 @@ export class NodesInfo {
     this.hoverOnActiveLayer = undefined
     this.nodesSource = undefined
     this.throttletime = 50 // miliseconds
-    this.throttleTimer = undefined
-    this.bindPointerMove = undefined
-    this.bindClick = undefined
-    this.selectedLayer = undefined
+    this.throttleTimerLayer = undefined
+    this.bindPointerMoveLayer = undefined
+    this.bindPointerMoveFragment = undefined
+    this.bindPointerClick = undefined
     this.startPoint = undefined
     this.endPoint = undefined
     this.startIndex = undefined
@@ -36,11 +36,13 @@ export class NodesInfo {
     this.speed = []
     this.slopes = []
     this.tolerance = 60
-    this.selectedLayerId = undefined
+    this.activeLayerId = undefined
+    this.activeLayer = undefined
     this.nextClickCleanSegment = false
+    this.nClicks = 0 // 0 -> start selecttion, 1 ->end selection, 2 -> clean selection
 
     // This layer shows circle where mouse move to select segment
-    this.selectedNodeLayer = new VectorLayer({
+    this.hoveredNode = new VectorLayer({
       id: 'nodes',
       source: new VectorSource({
         features: [
@@ -66,7 +68,7 @@ export class NodesInfo {
     })
 
     // segment layer selected by user
-    this.selectedSegmentLayer = new VectorLayer({
+    this.fragmentLayer = new VectorLayer({
       id: 'segment',
       source: new VectorSource({
         features: [
@@ -79,53 +81,43 @@ export class NodesInfo {
 
   }
 
-  getLinestringFromLayer() {
-    const features = this.selectedLayer.getSource().getFeatures()
-    const linestring = features.find(f => {
-      return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
-    })
-    return linestring
-  }
-
   async activate() {
     var _this = this
     this.active = true
     this.layerSelector = new LayerSelector(this.map,{
       throttleTime: 0
     })
-
+    // this.map.getViewport().addEventListener('mouseleave', this.cleanSegment.bind(this))
     // Check first if there is a layer already selected
-    if (!this.selectedLayer) {
+    if (!this.activeLayer) {
       this.layerSelector.on()
       this.map.once('layer-selected', async function(e) {
         var strokeWidth = 5
-        _this.selectedLayer = e.layer   
-        _this.selectedLayerId = e.layer.get('parentId')
-        _this.selectedLayer.setStyle(createStyleByStrokeColor(e.layer.get('col'), strokeWidth))
+        _this.activeLayer = e.layer   
+        _this.activeLayerId = e.layer.get('parentId')
+        _this.activeLayer.setStyle(createStyleByStrokeColor(e.layer.get('col'), strokeWidth))
         _this.layerSelector.off()
   
-        var coords = _this.getLinestringFromLayer(_this.selectedLayer).getGeometry().getCoordinates()
+        var coords = _this.getLinestringFromLayer(_this.activeLayer).getGeometry().getCoordinates()
         _this.initCoords = coords
         _this.nodesSource = _this.getNodesSource(coords)
         _this.nodesLayer.setSource(_this.nodesSource)
         
         _this.map.addLayer(_this.nodesLayer)
-        _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
-        _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
+        _this.bindPointerMoveLayer = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
+        _this.bindPointerClick = _this.map.on('click', _this.pointerClick.bind(_this))
         _this.sumUp(0, _this.initCoords.length - 1)
       })      
     } else {
       _this.nodesSource = _this.getNodesSource(_this.initCoords)
-      _this.nodesLayer.setSource(_this.nodesSource)      
-      _this.bindPointerMove = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
-      _this.bindClick = _this.map.on('click', _this.clickLayer.bind(_this))
+      _this.nodesLayer.setSource(_this.nodesSource)
+      _this.bindPointerMoveLayer = _this.map.on('pointermove', _this.pointerMoveLayer.bind(_this))
+      _this.bindPointerClick = _this.map.on('click', _this.pointerClick.bind(_this))
       _this.sumUp(0, _this.initCoords.length - 1)      
-    }
-    
-    
+    }    
 
-    this.map.addLayer(this.selectedNodeLayer)
-    this.map.addLayer(this.selectedSegmentLayer)
+    this.map.addLayer(this.hoveredNode)
+    this.map.addLayer(this.fragmentLayer)
   }
 
   // TODO
@@ -135,40 +127,39 @@ export class NodesInfo {
     this.endPoint = undefined
     this.startIndex = undefined
     this.endIndex = undefined
-    
-    unByKey(this.bindPointerMove)
-    unByKey(this.bindClick)
-    this.bindPointerMove = this.map.on('pointermove', this.pointerMoveLayer.bind(this))
-    this.bindClick = this.map.on('click', this.clickLayer.bind(this))
+    this.nClicks = 0
   }
 
   deactivate() {
-    unByKey(this.bindPointerMove)
-    unByKey(this.bindClick)
-    if (this.selectedSegmentLayer) {
+    unByKey(this.bindPointerMoveLayer)
+    unByKey(this.bindPointerMoveFragment)
+    unByKey(this.bindPointerClick)
+    this.map.getViewport().removeEventListener('mouseleave', this.cleanSegment)
+    if (this.fragmentLayer) {
       this.cleanSegment()
 
     }
-    // this.selectedLayerId = undefined
-    this.selectedNodeLayer.getSource().clear()
-    this.selectedNodeLayer.getSource().addFeature(
+    // this.activeLayerId = undefined
+    this.hoveredNode.getSource().clear()
+    this.hoveredNode.getSource().addFeature(
       new Feature({
         geometry: new Point([])
       })
     )
 
-    this.map.removeLayer(this.selectedNodeLayer)
-    this.map.removeLayer(this.selectedSegmentLayer)
+    this.map.removeLayer(this.hoveredNode)
+    this.map.removeLayer(this.fragmentLayer)
     this.map.removeLayer(this.nodesLayer)
     this.initCoords = undefined
     this.hoverOnActiveLayer = undefined
     this.nodesSource = undefined
     this.throttletime = 50 // miliseconds
-    this.throttleTimer = undefined
-    this.bindPointerMove = undefined
-    this.bindClick = undefined
-    this.selectedLayer = undefined
-    this.selectedLayerId = undefined
+    this.throttleTimerLayer = undefined
+    this.bindPointerMoveLayer = undefined
+    this.bindPointerMoveFragment = undefined
+    this.bindPointerClick = undefined
+    this.activeLayer = undefined
+    this.activeLayerId = undefined
     this.startPoint = undefined
     this.endPoint = undefined
     this.startIndex = undefined
@@ -180,104 +171,100 @@ export class NodesInfo {
   }
 
 
-  clickLayer(e) {
-    if (!this.selectedLayer) {
-      this.cleanSegment()
-      this.map.dispatchEvent('unselect-track')
-      return
-    }
-    unByKey(this.bindPointerMove)
-    unByKey(this.bindClick)
+  pointerClick(e) {
+    var _this = this
+    let hitPoint, hitIndex
 
-    this.bindPointerMove = this.map.on('pointermove', this.pointerMoveSegment.bind(this))
-    this.bindClick = this.map.on('click', this.clickSegment.bind(this))
-  }
-
-  clickSegment(e) {
-    this.map.dispatchEvent({
-      type: 'selected-segment'
-    })
-    this.sumUp(this.startIndex, this.endIndex)
-    const data = this.trackInfo
-    const response = this.trackInfo
-    response.type = 'track-info'
-    response.name = this.selectedLayer.get('name'),
-    response.data = this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
-    this.map.dispatchEvent(response)
-    this.nextClickCleanSegment = true
-
-    unByKey(this.bindPointerMove)
-    unByKey(this.bindClick)
-    
-    // Next click cleans segment
-    console.log('bind click cleanSegment')
-    this.bindClick = this.map.on('click', this.clickToCleanSegment.bind(this))
-    // this.reset()
-  }
-
-  pointerMoveSegment(e) {
-    if (this.throttleTimer) return
-    this.throttleTimer = true
-    setTimeout(async () => {
-      var _this = this
-      const hit = this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
-        return true
-      }, { hitTolerance: 10, layerFilter: (l) => {return l.get('id') == this.selectedLayer.get('id')} })
-
-      if (hit) {
-        var mouseCoord = this.map.getCoordinateFromPixel(e.pixel)
-        this.endPoint = this.nodesSource.getClosestFeatureToCoordinate(mouseCoord)
-        this.endIndex = this.endPoint.get('id')
-        let segmentCoords
-        if (this.startIndex > this.endIndex){
-          segmentCoords = this.initCoords.slice(this.endIndex, _this.startIndex + 1)
-        } else {
-          segmentCoords = this.initCoords.slice(this.startIndex, this.endIndex + 1)
-        }
-        this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(segmentCoords)
-
-        this.sumUp(this.startIndex, this.endIndex)
+    const hit = this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
+      var mouseCoord =  _this.map.getCoordinateFromPixel(e.pixel)
+      hitPoint = _this.nodesSource.getClosestFeatureToCoordinate(mouseCoord)
+      hitIndex = hitPoint.get('id')
+      return true
+    }, { hitTolerance: 10, layerFilter: (l) => {return l.get('id') == this.activeLayer.get('id')} })
+    if (hit) {
+      this.nClicks++
+    } else {
+      if (this.nClicks == 2) {
+        this.nClicks++
       }
+    }
 
-      _this.throttleTimer = false
-    }, this.throttleTime)
+    switch (this.nClicks) {
+      case 3: {
+        this.cleanSegment()
+        this.map.dispatchEvent('unselect-track')
+        this.nClicks = 0
+        break;
+      }
+      case 2: {
+        unByKey(this.bindPointerMoveFragment)
+        this.endPoint = hitPoint
+        this.endIndex = hitIndex
+        this.sumUp(this.startIndex, this.endIndex)
+        break;
+      }
+      case 1: {
+        this.startPoint = hitPoint
+        this.startIndex = hitIndex
+        
+        this.map.dispatchEvent({
+          type: 'selected-segment'
+        }) 
+        break;
+      }
+    }
   }
 
   pointerMoveLayer(e) {
     var _this = this
-    if (this.throttleTimer) return
-    this.throttleTimer = true
+    if (this.throttleTimerLayer) return
+    this.throttleTimerLayer = true
     setTimeout(async () => {
+      let hoveredFeature
       const hit = _this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
-        // _this.selectedLayer = layer
-        var coords = _this.getLinestringFromLayer(layer).getGeometry().getCoordinates()
-        _this.nodesSource = _this.getNodesSource(coords)
         return true
       }, { 
         hitTolerance: 10, 
         layerFilter: (l) => {
-          return l.get('parentId') === _this.selectedLayer.get('parentId')
+          return l.get('parentId') === _this.activeLayer.get('parentId')
          } 
       })
       
       if (hit) {
-        var mouseCoord = this.map.getCoordinateFromPixel(e.pixel)
-        this.startPoint =this.nodesSource.getClosestFeatureToCoordinate(mouseCoord)
-        this.startIndex = this.startPoint.get('id')
         try {
           this.map.getTargetElement().style.cursor = 'pointer'
-          this.selectedNodeLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(
-            this.startPoint.getGeometry().getCoordinates()
+          var mouseCoord = this.map.getCoordinateFromPixel(e.pixel)
+          hoveredFeature = this.nodesSource.getClosestFeatureToCoordinate(mouseCoord)          
+          this.hoveredNode.getSource().getFeatures()[0].getGeometry().setCoordinates(
+            hoveredFeature.getGeometry().getCoordinates()
           )
+          this.map.dispatchEvent({
+            type: 'nodesInfoNodeHover'
+          })
+          
+          // When fragment of layer starts been selected nClicks == 1
+          if (this.nClicks == 1) {
+            var mouseCoord = this.map.getCoordinateFromPixel(e.pixel)
+            this.endPoint = this.nodesSource.getClosestFeatureToCoordinate(mouseCoord)
+            this.endIndex = this.endPoint.get('id')
+            let segmentCoords
+            if (this.startIndex > this.endIndex){
+              segmentCoords = this.initCoords.slice(this.endIndex, _this.startIndex + 1)
+            } else {
+              segmentCoords = this.initCoords.slice(this.startIndex, this.endIndex + 1)
+            }
+            this.fragmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(segmentCoords)
+    
+            this.sumUp(this.startIndex, this.endIndex)            
+          }
         } catch (err) {
           console.log(err)
         }
       } else {
         this.map.getTargetElement().style.cursor = ''
-        // this.selectedLayer = undefined
-        this.selectedNodeLayer.getSource().getFeatures()[0].getGeometry().setCoordinates([])
+        this.hoveredNode.getSource().getFeatures()[0].getGeometry().setCoordinates([])
       }
-      _this.throttleTimer = false
+      _this.throttleTimerLayer = false
     }, this.throttleTime)
   }
 
@@ -337,7 +324,7 @@ export class NodesInfo {
     var tolerance = this.tolerance // Seconds
     var elapsed  = 0
 
-    var coordsList = this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+    var coordsList = this.fragmentLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
     if (!coordsList.length) {
       coordsList = this.initCoords
     }
@@ -398,12 +385,12 @@ export class NodesInfo {
     slopeData = this.slopes.slice(first, last + 1)
 
     response.distances = xDataGraph
-    // Elevations only when this.selectedSegmentLayer  has no coords
-    if (this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().getCoordinates().length === 0) {
+    // Elevations only when this.fragmentLayer  has no coords
+    if (this.fragmentLayer.getSource().getFeatures()[0].getGeometry().getCoordinates().length === 0) {
       response.elevations = yDataGraph
     }
 
-    response.layerId = this.selectedLayerId
+    response.layerId = this.activeLayerId
     response.speed = speedData
     response.slope = slopeData
     response.indexes = { first, last }
@@ -426,6 +413,7 @@ export class NodesInfo {
     this.speed = []
     let ele, slope
     let incEle = 0, maxSlope = 0, minSlope = 0, maxIndex = 0, minIndex = 0
+
     coords.forEach((cur, index) => {
       ele = cur[2] < 0 ? 0 : Math.floor(cur[2])
       if (index === 0) {
@@ -475,6 +463,7 @@ export class NodesInfo {
       }
       nodesSource.addFeature(f)
     })
+
     this.initCoords = data
     this.speedAvg = this.speed
     // Smooth speed. Avg neighbours
@@ -519,12 +508,12 @@ export class NodesInfo {
         index = index2 + 1
       }
     }
-    await _this.getInfoFromCoords(_this.initCoords,_this.selectedLayerId)
+    await _this.getInfoFromCoords(_this.initCoords,_this.activeLayerId)
     return _this.initCoords
   }
 
   setSelectedNode(coord) {
-    this.selectedNodeLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(
+    this.hoveredNode.getSource().getFeatures()[0].getGeometry().setCoordinates(
       coord
     )
   }
@@ -535,7 +524,7 @@ export class NodesInfo {
   }
 
   async getInfoFromCoords(coords, layerId) {
-    this.selectedLayerId = layerId
+    this.activeLayerId = layerId
     this.initCoords = coords
     this.nodesSource = await this.getNodesSource(coords)
     this.startIndex = 0
@@ -549,13 +538,9 @@ export class NodesInfo {
     return this.active
   }
 
-  clickToCleanSegment() {
-    this.cleanSegment()
-    this.map.dispatchEvent('unselect-track')
-    this.reset()
-  }
   cleanSegment() {
-    this.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates([[]])
+    this.nClicks = 0
+    this.fragmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates([[]])
     this.map.dispatchEvent({
       type: 'clean-selected-segment'
     })
@@ -565,6 +550,14 @@ export class NodesInfo {
     return this.map.getLayers().array_.find((layer) => {
       return layer.get('id') == id
     })
+  }
+
+  getLinestringFromLayer() {
+    const features = this.activeLayer.getSource().getFeatures()
+    const linestring = features.find(f => {
+      return f.getGeometry().getType().toLowerCase().indexOf('linestring') != -1
+    })
+    return linestring
   }
 
 }

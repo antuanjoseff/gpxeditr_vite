@@ -547,7 +547,7 @@ export default {
         case 'info':
           tools.info.deactivate()
           map.value.map.un('selected-segment', showTrackData)
-          map.value.map.un('unselect-track', unselectSegment)
+          map.value.map.un('clean-selected-segment', unselectSegment)
           appStore.setTrackInfo({
             distance:undefined,
             time:undefined,
@@ -594,14 +594,14 @@ export default {
         const layer = getLayerFromLayerGroup(layerGroup, 'track')        
         const coords = getCoords(layer)
         tools.info.initCoords = coords
-        tools.info.selectedLayerId = activeLayerId.value
-        tools.info.selectedLayer = layer
+        tools.info.activeLayerId = activeLayerId.value
+        tools.info.activeLayer = layer
       }
       tools.info.callback = showTrackData
       tools.info.activate()
       appStore.setActiveTool('info')
       map.value.map.on('selected-segment', selectSegment)
-      map.value.map.on('unselect-track', unselectSegment)
+      map.value.map.on('clean-selected-segment', unselectSegment)
     }
 
     const selectSegment = () => {
@@ -626,7 +626,6 @@ export default {
       }
       appStore.setTrackInfo(data)
       appStore.setGraphSelectedRange(payload.indexes)
-      // appStore.setSegmentIsSelected(true)
     }
 
     const segmentIsSelected = computed(() => {
@@ -640,12 +639,11 @@ export default {
 
     watch(segmentIsSelected, ( newValue, oldValue ) => {
       if (!newValue) {
-        tools.info.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates([[]])
+        tools.info.fragmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates([[]])
       }
     })
 
     const showTrackData = function (payload) {
-      console.log('Function showTrackData MapPage')
       updateGraphData(payload)
       // UPDATE GRAPH DATA
       if (!payload.elevations) {
@@ -700,7 +698,7 @@ export default {
     }
 
     const addNewSegmentFromGraph = function (fromLayerId, type) {
-      var coords = tools.info.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+      var coords = tools.info.fragmentLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
       addNewSegment(fromLayerId, coords, type)
     }
 
@@ -721,9 +719,7 @@ export default {
       appStore.setTOCLayerInfo({layerId: groupLayerId, info: {startTime, endTime}})
 
       const filename = groupLayer.get('name') + '(' + type + ')'
-      console.log(filename)
       const trackinfo = await tools.info.getInfoFromCoords(coords, groupLayerId)
-      console.log(trackinfo)
       const layerId = newLayerId()
 
       if (coords[0].length > 3){
@@ -920,8 +916,8 @@ export default {
       tools.info.deactivate()
       tools.info.callback = showTrackData
       await tools.info.getInfoFromCoords(coords, layerId)
-      tools.info.selectedLayersId = layerId
-      tools.info.selectedLayer = layer   
+      tools.info.activeLayersId = layerId
+      tools.info.activeLayer = layer   
 
       activateNodesInfo()
     }
@@ -951,7 +947,7 @@ export default {
       } else {
         coords = activeLayerCoords.slice(endIndex, startIndex)
       }
-      tools.info.selectedSegmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(coords)
+      tools.info.fragmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(coords)
       tools.info.startIndex = startIndex
       tools.info.endIndex = endIndex
       tools.info.callback = updateGraphData
@@ -1123,7 +1119,6 @@ export default {
     const modifyTimestamp = () => {
       const mode = editTimestampMode.value
       const layerGroup = findLayer(activeLayerId.value)
-      console.log(activeLayerId.value)
       const layer = getLayerFromLayerGroup(layerGroup, 'track')
       const coords = layer.getSource().getFeatures()[0].getGeometry().getCoordinates()
       const selectedTime = new Date(model.value)
@@ -1189,8 +1184,13 @@ export default {
       }
     }
 
+    const nodesInfocleanSegment = () => {
+      tools.info.cleanSegment()
+    }
+
     return {
       model,
+      nodesInfocleanSegment,
       modifyTimestamp,
       confirm,
       editTimestampMode,

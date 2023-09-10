@@ -1,5 +1,5 @@
 <template>
-    <div class="q-gutter-sm"  v-if="info.distance">
+    <div class="q-gutter-sm"  v-if="activeTool=='info'">
         <div class="graph-header">
             <div class="flex">
                 <!-- DISTANCE -->
@@ -108,20 +108,19 @@
             </div>
           </div>
         <q-card  v-if="info.distance" horizontal="true" class="flex column">
-          <q-card-section class="graph-wrapper" @mouseleave="mouseOut">
+          <q-card-section class="graph-wrapper" @mouseleave="mouseOut"  @mouseenter="mouseIn">
             <div v-if="profileIsVisible" id="tooltip-header"></div>
             <line-chart
               ref="LINECHART"
               height="250"
-              @overGraphic="overGraphic"
-              @outGraphic="outGraphic"
+              @overLineChart="overGraphic"
               @dragOnGraph="dragOnGraph"
             ></line-chart>
             <div v-if="profileIsVisible" id="tooltip-footer"></div>
           </q-card-section>
         </q-card>
     </div>
-  </template>
+</template>
 
 <script>
 import { defineComponent, computed, ref } from 'vue'
@@ -131,7 +130,14 @@ import LineChart from 'components/LineChart.vue'
 export default defineComponent({
 
   name: 'ModalTrackInfo',
-  emits: ['selected-segment-create-track', 'over-graphic', 'dragOnGraph', 'fillTimeGap', 'cancelTrackProfile'],
+  emits: [
+    'selected-segment-create-track',
+    'clear-box',
+    'over-graphic',
+    'dragOnGraph',
+    'fillTimeGap',
+    'cancelTrackProfile'
+  ],
   components: { LineChart },
   setup(props, context){
     const appStore = useAppStore()
@@ -181,20 +187,19 @@ export default defineComponent({
       return slider.value
     }
 
-    const outGraphic = (data) => {
-      context.emit('out-graphic', data)
-      document.getElementById('tooltip-footer').innerHTML = ''
-      document.getElementById('tooltip-header').innerHTML = ''
-      LINECHART.value.clearGraphSelection()
-    }
-
     const fillTimeGaps = (data) => {
       context.emit('fillTimeGaps')
     }
 
     const mouseOut = (data) => {
-      console.log('out')
-      document.getElementById('slope-box').innerHTML = ''
+      // document.getElementById('slope-box').innerHTML = ''
+      // context.emit('clearBox')
+      // LINECHART.value.clearGraphSelection()
+      LINECHART.value.resetThrottle()
+    }
+
+    const mouseIn = (data) => {
+      LINECHART.value.resetThrottle()
     }
 
     const cancelTrackProfile = () => {
@@ -216,13 +221,13 @@ export default defineComponent({
       trackHasTimeGaps,
       clearGraphSelection,
       mouseOut,
+      mouseIn,
       slider,
       sliderValue,
       updateTolerance,
       toggleSlider,
       dragOnGraph,
       cancelTrackProfile,
-      outGraphic,
       overGraphic,
       createTrack,
       activeTool,

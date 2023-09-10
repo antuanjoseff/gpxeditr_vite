@@ -186,7 +186,7 @@
             ref="GRAPH"
             @selectedSegmentCreateTrack="selectedSegmentCreateTrack"
             @overGraphic="overGraphic"
-            @outGraphic="outGraphic"
+            @clearBox="outGraphic"
             @dragOnGraph="dragOnGraph"
             @fillTimeGaps="fillTimeGaps"
             @cancelTrackProfile="cancelTrackProfile"
@@ -369,7 +369,8 @@ export default defineComponent({
     }
 
     const outGraphic = () => {
-      // MAP.value.clearAnimatedPoint()
+      console.log('MAIN LAYOUT OUT LINECHART')
+      MAP.value.nodesInfocleanSegment()
     }
 
     const overGraphic = (data) => {

@@ -1,6 +1,6 @@
 <template>
   <div id="slope-box"></div>
-  <div class="fit padding-canvas" v-if="elevationData">
+  <div id = "chartContainer" class="fit padding-canvas" v-if="elevationData">
     <canvas id="overlay" height="250" style="position:absolute;pointer-events:none;"></canvas>
     <line-chart
       ref="CHART"
@@ -28,15 +28,19 @@ export default defineComponent({
     LineChart
   },
   props: ['height'],
-  emits: ['overGraphic', 'outGraphic', 'dragOnGraph'],
-  setup(props, { emit }) {
+  emits: ['overLineChart', 'clearBox', 'dragOnGraph'],
+  setup(props, context) {
     const appStore = useAppStore()
     const CHART = ref()
     var startIndex, endIndex
     var canvas, overlay, chart
     var selectionContext, selectionRect
-    var drag = false
-    var cleanRequired = false
+    var throttle = undefined
+    const startSelection = 1  //nClicks => 1
+    const endSelection = 2    //nClicks => 2
+    const cleanSelection = 3  //nClicks => 3
+
+    var nClicks = 0 
 
     const graphSelectedRange = computed(() => {
       return appStore.getGraphSelectedRange
@@ -72,15 +76,15 @@ export default defineComponent({
     }
 
     const clearGraphSelection = () => {
+      nClicks = 0
       appStore.setSegmentIsSelected(false)
-      drag = false
-      cleanRequired = false
       const rect = canvas.getBoundingClientRect();
       selectionContext.clearRect(0, 0, canvas.width, canvas.height);
       selectionContext.fillRect(0,
         chart.chartArea.top,
         1,
-        chart.chartArea.bottom - chart.chartArea.top);
+        chart.chartArea.bottom - chart.chartArea.top
+      );
     }
 
 
@@ -89,6 +93,7 @@ export default defineComponent({
       if (!CHART.value) return
       
       await nextTick()
+
       window.addEventListener("resize", resizeHandler)
       chart = CHART.value.chart
       canvas = document.getElementById('profile-chart')
@@ -103,45 +108,47 @@ export default defineComponent({
       }
 
       canvas.addEventListener('pointerdown', evt => {
-        if (cleanRequired) {
-          clearGraphSelection()
-          cleanRequired = false
-          return
-        }
-        if (!drag) {
-          const points = chart.getElementsAtEventForMode(evt, 'index', {
-            intersect: false
-          })
-          if (!points) return
-          startIndex = points[0].index;
-          const rect = canvas.getBoundingClientRect()
-          selectionRect.startX = evt.clientX - rect.left
-          selectionRect.startY = chart.chartArea.top
-          drag = true
-        } else {
-
-          const points = chart.getElementsAtEventForMode(evt, 'index', {
-            intersect: false
-          });
-          drag = false;
-          cleanRequired = true
-          endIndex = points[0].index;
-          appStore.setSegmentIsSelected(true)
-        }
+        nClicks++
+        switch (nClicks) {
+          case cleanSelection: {
+            clearGraphSelection()
+            break;
+          }
+          case startSelection: {
+            const points = chart.getElementsAtEventForMode(evt, 'index', {
+              intersect: false
+            })
+            if (!points) return
+            startIndex = points[0].index;
+            const rect = canvas.getBoundingClientRect()
+            selectionRect.startX = evt.clientX - rect.left
+            selectionRect.startY = chart.chartArea.top
+            break
+          }
+          case endSelection: {
+            const points = chart.getElementsAtEventForMode(evt, 'index', {
+              intersect: false
+            });
+            endIndex = points[0].index;
+            appStore.setSegmentIsSelected(true)
+            break;
+          }
+        }       
       })
 
-      var throttle = undefined
+      throttle = undefined
       function doThrottle(evt) {
         if (throttle) return
           throttle = true
           setTimeout(async () => {
             const rect = canvas.getBoundingClientRect();
             const eleOrigin = CHART.value.chart.scales.altitud.getPixelForValue(0)
+            let points
+            points = chart.getElementsAtEventForMode(evt, 'index', {
+              intersect: false
+            })
 
-            if (drag) {
-              const points = chart.getElementsAtEventForMode(evt, 'index', {
-                intersect: false
-              })
+            if (nClicks === startSelection) {
               if (points.length === 0) return
               endIndex = points[0].index;
               const rect = canvas.getBoundingClientRect();
@@ -155,7 +162,7 @@ export default defineComponent({
                 eleOrigin - chart.chartArea.top
               )
 
-              emit('dragOnGraph', { startIndex, endIndex })
+              context.emit('dragOnGraph', { startIndex, endIndex })
             }
             throttle = false
           }, 5)
@@ -167,24 +174,23 @@ export default defineComponent({
 
 
       //  appStore.setSegmentIsSelected(true)
+      watch(segmentIsSelected, ( newValue, oldValue ) => {
+        if (!newValue) {
+          clearGraphSelection()
+        }
+      })
 
-        watch(segmentIsSelected, ( newValue, oldValue ) => {
-          if (!newValue) {
-            clearGraphSelection()
-          }
-        })
-
-        watch(graphSelectedRange, ( newValue, oldValue ) => {
-          if (newValue.first) {
-            drawRectangle(newValue.first, newValue.last)
-            endIndex = newValue.last
-          }
-        })
+      watch(graphSelectedRange, ( newValue, oldValue ) => {
+        if (newValue.first) {
+          drawRectangle(newValue.first, newValue.last)
+          endIndex = newValue.last
+        }
+      })
     })
 
 
     const segmentIsSelected = computed(() => {
-      return appStore.getSsegmentIsSelected
+      return appStore.getSegmentIsSelected
     })
 
     const dataset = computed(() => {
@@ -324,12 +330,6 @@ export default defineComponent({
 
     plugins.value = [tooltipLine]
 
-    const mouseOut = async (e) => {
-      drag = false;
-      document.getElementById('slope-box').innerHTML = ''
-      emit('outGraphic')
-    }
-
     const doTooltip = (eleData, speedData, chartArea) => {
       let indexValue = 0
       let speedFormatted = '¿?'
@@ -372,18 +372,22 @@ export default defineComponent({
       } else {
         document.getElementById('tooltip-footer').style.marginLeft = (canvas.width - tooltipFooterWidth - offset)+'px'
       }
-      emit('overGraphic', indexValue)
+      context.emit('overLineChart', indexValue)
     }
 
+    const resetThrottle = () => {
+      throttle = undefined
+    }
     return {
       CHART,
+      resetThrottle,
       data,
       clearGraphSelection,
-      mouseOut,
       plugins,
       options,
       elevationData,
-      graphHeight
+      graphHeight,
+      segmentIsSelected
     }
   }
 })
