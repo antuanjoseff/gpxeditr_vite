@@ -99,10 +99,12 @@
                   tabindex="0"
                 >
                   <div class="wp-info">
-                    <div>{{ wp.id }} {{ wp.name}}</div>
-                    <div @click.stop="showWaypointInfo(element.id, wp.id, wp.name)">
-                      <q-icon class="waypoint-edit" name="edit" />
-                    </div>
+                    <q-chip>
+                      <div>{{ wp.id }} {{ wp.name}}</div>
+                      <div @click.stop="showWaypointInfo(element.id, wp.id, wp.name)">
+                        <q-icon class="waypoint-edit" name="edit" title="Edit waypoint" />
+                      </div>
+                    </q-chip>
                   </div>
               </div>
           </div>
@@ -473,13 +475,21 @@ label.active{
 .no-events{
   pointer-events: none;
 }
+.waypoint-item:focus-visible,
+.wp-item:focus-visible{
+  outline: none;
+}
 .waypoint-item:hover{
   text-decoration: underline;
   font-size: 105%;
 }
 
+.waypoint-item.active .wp-info .q-chip{
+  background: white;
+  color:black;
+}
 .waypoint-item.active{
-  background:white;
+  // background:white;
   color: black;
   padding: 2px;
 }
@@ -500,11 +510,18 @@ label.active{
 .waypoint-edit{
   border: 1px solid #ccc;
   padding: 2px;
+  border-radius:50%;
+  background: lightgrey;
+  color:black;
+  margin-left: 10px;
+  cursor: pointer;
 }
 .track-waypoints-container{
   max-height: 1000px;
   overflow: auto;
   transition: max-height .5s ease-out;
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .track-waypoints-container.hide{
@@ -527,6 +544,7 @@ i.edit{
   border-color: #ccc;
   background: #ccc;
   font-size: 110%;
+  outline: none;
 }
 .track-name{
   margin-bottom: 10px;
