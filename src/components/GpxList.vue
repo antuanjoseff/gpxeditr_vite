@@ -99,12 +99,13 @@
                   tabindex="0"
                 >
                   <div class="wp-info">
-                    <q-chip>
+                    <!-- <q-chip> -->
                       <div>{{ wp.id }} {{ wp.name}}</div>
-                      <div @click.stop="showWaypointInfo(element.id, wp.id, wp.name)">
+                      <div @click.stop="showWaypointInfo(element.id, wp.id, wp.name)">                        
+                        <!-- <q-icon class="waypoint-flag" name="flag" title="Edit waypoint" /> -->
                         <q-icon class="waypoint-edit" name="edit" title="Edit waypoint" />
                       </div>
-                    </q-chip>
+                    <!-- </q-chip> -->
                   </div>
               </div>
           </div>
@@ -197,7 +198,6 @@ export default defineComponent({
     'finishDrag',
     'download-track',
     'create-track',
-    'overGraphic',
     'track-profile',
     'clickWaypoint',
     'deleteWaypoint',
@@ -302,10 +302,6 @@ export default defineComponent({
       }, 50)
     }
 
-    const overGraphic = (data) => {
-      context.emit('overGraphic', data)
-    }
-
     const clickWaypoint = (layerId, waypointId, name) => {
       context.emit('clickWaypoint', {layerId, waypointId, name})
     }
@@ -370,7 +366,6 @@ export default defineComponent({
       activeWaypointId,
       clickWaypoint,
       activeLayerId,
-      overGraphic,
       draggable,
       over,
       startDrag,
@@ -484,22 +479,46 @@ label.active{
   font-size: 105%;
 }
 
+.wp-info div:first-of-type{
+  flex-grow: 1;
+}
+
+.wp-info div:second-of-type{
+  background: blue;
+}
+
+.waypoint-item.active .wp-info,
 .waypoint-item.active .wp-info .q-chip{
+  // border: 1px solid black;
+  padding: 5px 0;
+  background: white;
+}
+
+.waypoint-item .wp-info .q-chip{
   background: white;
   color:black;
+  border: 1px solid black;
 }
 .waypoint-item.active{
   // background:white;
   color: black;
-  padding: 2px;
 }
 
-.waypoint-item:not(.active) .wp-info i{
+.waypoint-item:not(.active) .wp-info i.waypoint-edit{
   display: none;
 }
 
-.waypoint-item.active .wp-info i{
+.waypoint-item:not(.active) .wp-info i.waypoint-flag{
   display: all;
+  pointer-events: none;
+}
+
+.waypoint-item.active .wp-info i.waypoint-edit{
+  display: all;
+}
+
+.waypoint-item.active .wp-info i.waypoint-flag{
+  display: none;
 }
 
 .wp-info {
@@ -507,11 +526,13 @@ label.active{
   justify-content: space-between;
 }
 
+.waypoint-flag,
 .waypoint-edit{
-  border: 1px solid #ccc;
+  // border: 1px solid #ccc;
   padding: 2px;
-  border-radius:50%;
-  background: lightgrey;
+  outline: none;
+  // border-radius:50%;
+  // background: lightgrey;
   color:black;
   margin-left: 10px;
   cursor: pointer;
@@ -520,8 +541,8 @@ label.active{
   max-height: 1000px;
   overflow: auto;
   transition: max-height .5s ease-out;
-  display: flex;
-  flex-wrap: wrap;
+  // display: flex;
+  // flex-wrap: wrap;
 }
 
 .track-waypoints-container.hide{
@@ -539,10 +560,10 @@ label.active{
 
 i.edit{
   cursor: pointer;
-  padding: 5px 8px;
+  // padding: 5px 8px;
   border-radius: 4px;
   border-color: #ccc;
-  background: #ccc;
+  // background: #ccc;
   font-size: 110%;
   outline: none;
 }

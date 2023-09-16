@@ -154,7 +154,7 @@ import { waypointStyle, waypointSelectedStyle } from 'src/js/MapStyles.js';
 
 export default {
   emits:[
-    'trackNameChanged'
+    'trackNameChanged', 'nodesInfoPointerDown'
   ],
   setup(props, context){
     let activeLayerCoords = undefined
@@ -546,8 +546,9 @@ export default {
           break
         case 'info':
           tools.info.deactivate()
-          map.value.map.un('selected-segment', showTrackData)
+          map.value.map.un('start-segment-selection', showTrackData)
           map.value.map.un('clean-selected-segment', unselectSegment)
+          map.value.map.un('nodesInfoPointerDown', nodesInfoPointerDown)
           appStore.setTrackInfo({
             distance:undefined,
             time:undefined,
@@ -600,7 +601,8 @@ export default {
       tools.info.callback = showTrackData
       tools.info.activate()
       appStore.setActiveTool('info')
-      map.value.map.on('selected-segment', selectSegment)
+      map.value.map.on('start-segment-selection', selectSegment)
+      map.value.map.on('nodesInfoPointerDown', nodesInfoPointerDown)
       map.value.map.on('clean-selected-segment', unselectSegment)
     }
 
@@ -877,11 +879,11 @@ export default {
     let debounce;
     let time = 50
 
-    const drawPointFromGraphic = (index) => {
+    const drawPointFromGraphic = ({index, nClicks}) => {
       window.clearTimeout(debounce);
       var coord = tools.info.initCoords[index]
       if (!coord) return 
-      tools.info.setSelectedNode(coord)
+      tools.info.setSelectedNode(coord, index, nClicks)
       var extent = map.value.map.getView().calculateExtent(map.value.map.getSize())
       if (!containsXY(extent, coord[0], coord[1])) {
         debounce = window.setTimeout(() => {
@@ -1188,6 +1190,10 @@ export default {
       tools.info.cleanSegment()
     }
 
+    const nodesInfoPointerDown = (n) => {
+      context.emit('nodesInfoPointerDown', {counter: n.counter})
+    }
+
     return {
       model,
       nodesInfocleanSegment,
@@ -1236,7 +1242,8 @@ export default {
       activeTrackStartTime,
       activeTrackEndTime,
       deleteTrack,
-      editTrackName
+      editTrackName,
+      nodesInfoPointerDown
     };
   },
 };

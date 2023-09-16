@@ -23,7 +23,7 @@ export class NodesInfo {
     this.throttletime = 50 // miliseconds
     this.throttleTimerLayer = undefined
     this.bindPointerMoveLayer = undefined
-    this.bindPointerMoveFragment = undefined
+    // this.bindPointerMoveFragment = undefined
     this.bindPointerClick = undefined
     this.startPoint = undefined
     this.endPoint = undefined
@@ -132,7 +132,7 @@ export class NodesInfo {
 
   deactivate() {
     unByKey(this.bindPointerMoveLayer)
-    unByKey(this.bindPointerMoveFragment)
+    // unByKey(this.bindPointerMoveFragment)
     unByKey(this.bindPointerClick)
     this.map.getViewport().removeEventListener('mouseleave', this.cleanSegment)
     if (this.fragmentLayer) {
@@ -156,7 +156,7 @@ export class NodesInfo {
     this.throttletime = 50 // miliseconds
     this.throttleTimerLayer = undefined
     this.bindPointerMoveLayer = undefined
-    this.bindPointerMoveFragment = undefined
+    // this.bindPointerMoveFragment = undefined
     this.bindPointerClick = undefined
     this.activeLayer = undefined
     this.activeLayerId = undefined
@@ -189,6 +189,11 @@ export class NodesInfo {
       }
     }
 
+    this.map.dispatchEvent({
+      type: 'nodesInfoPointerDown', 
+      counter: this.nClicks
+    })
+
     switch (this.nClicks) {
       case 3: {
         this.cleanSegment()
@@ -197,7 +202,7 @@ export class NodesInfo {
         break;
       }
       case 2: {
-        unByKey(this.bindPointerMoveFragment)
+        // unByKey(this.bindPointerMoveFragment)
         this.endPoint = hitPoint
         this.endIndex = hitIndex
         this.sumUp(this.startIndex, this.endIndex)
@@ -208,7 +213,7 @@ export class NodesInfo {
         this.startIndex = hitIndex
         
         this.map.dispatchEvent({
-          type: 'selected-segment'
+          type: 'start-segment-selection'
         }) 
         break;
       }
@@ -238,9 +243,9 @@ export class NodesInfo {
           this.hoveredNode.getSource().getFeatures()[0].getGeometry().setCoordinates(
             hoveredFeature.getGeometry().getCoordinates()
           )
-          this.map.dispatchEvent({
-            type: 'nodesInfoNodeHover'
-          })
+          // this.map.dispatchEvent({
+          //   type: 'nodesInfoNodeHover'
+          // })
           
           // When fragment of layer starts been selected nClicks == 1
           if (this.nClicks == 1) {
@@ -498,9 +503,6 @@ export class NodesInfo {
           var incTimePerPoint = incTime / nPointsWithoutTime
           for (var a = index; a < index2; a++) {
             _this.initCoords[a][timePos] = parseInt(_this.initCoords[a - 1][timePos] + incTimePerPoint)
-            // if (_this.initCoords[a][elePos] === undefined){
-            //   _this.initCoords[index - 1][elePos]
-            // }
           }
         } else {
           console.log('time gap reaches the end. Can not fill gap')
@@ -512,10 +514,26 @@ export class NodesInfo {
     return _this.initCoords
   }
 
-  setSelectedNode(coord) {
+  setSelectedNode(coord, index, nClicks) {    
     this.hoveredNode.getSource().getFeatures()[0].getGeometry().setCoordinates(
       coord
     )
+    if (!this.startIndex) {
+      this.startIndex = index
+      this.endIndex = index
+    }
+    let segmentCoords
+    if (nClicks == 1) {
+      this.endIndex = index
+      if (this.startIndex > this.endIndex){
+        segmentCoords = this.initCoords.slice(this.endIndex, this.startIndex + 1)
+      } else {
+        segmentCoords = this.initCoords.slice(this.startIndex, this.endIndex + 1)
+      }
+      this.fragmentLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(segmentCoords)
+
+      this.sumUp(this.startIndex, this.endIndex)
+    }
   }
   
   changeTolerance(tolerance, firstIndex, lastIndex) {
@@ -550,6 +568,10 @@ export class NodesInfo {
     return this.map.getLayers().array_.find((layer) => {
       return layer.get('id') == id
     })
+  }
+
+  setNClicks(n)  {
+    this.nClicks = n
   }
 
   getLinestringFromLayer() {

@@ -9,6 +9,7 @@
       :options="options"
       :plugins="plugins"
       :height="graphHeight" class="fit"
+      @mouseenter="mouseEnterLinechart"
     />
   </div>
 </template>
@@ -28,7 +29,7 @@ export default defineComponent({
     LineChart
   },
   props: ['height'],
-  emits: ['overLineChart', 'clearBox', 'dragOnGraph'],
+  emits: ['overLineChart', 'clearBox', 'dragOnGraph', 'pointerClicked'],
   setup(props, context) {
     const appStore = useAppStore()
     const CHART = ref()
@@ -48,6 +49,11 @@ export default defineComponent({
 
     const resizeHandler = () => {
       drawRectangle(startIndex, endIndex)
+    }
+
+    const mouseEnterLinechart = () => {
+      console.log('mouseenter linechart')
+      throttle = undefined
     }
 
     onUnmounted(async () => {
@@ -108,13 +114,13 @@ export default defineComponent({
       }
 
       canvas.addEventListener('pointerdown', evt => {
-        nClicks++
-        switch (nClicks) {
-          case cleanSelection: {
+        nClicks++        
+        switch (true) {
+          case nClicks >= cleanSelection: {
             clearGraphSelection()
             break;
           }
-          case startSelection: {
+          case nClicks == startSelection: {
             const points = chart.getElementsAtEventForMode(evt, 'index', {
               intersect: false
             })
@@ -125,7 +131,7 @@ export default defineComponent({
             selectionRect.startY = chart.chartArea.top
             break
           }
-          case endSelection: {
+          case nClicks == endSelection: {
             const points = chart.getElementsAtEventForMode(evt, 'index', {
               intersect: false
             });
@@ -133,7 +139,8 @@ export default defineComponent({
             appStore.setSegmentIsSelected(true)
             break;
           }
-        }       
+        }   
+        context.emit('pointerClicked', {counter: nClicks})    
       })
 
       throttle = undefined
@@ -147,7 +154,6 @@ export default defineComponent({
             points = chart.getElementsAtEventForMode(evt, 'index', {
               intersect: false
             })
-
             if (nClicks === startSelection) {
               if (points.length === 0) return
               endIndex = points[0].index;
@@ -372,12 +378,26 @@ export default defineComponent({
       } else {
         document.getElementById('tooltip-footer').style.marginLeft = (canvas.width - tooltipFooterWidth - offset)+'px'
       }
-      context.emit('overLineChart', indexValue)
+      context.emit('overLineChart', {index: indexValue, nClicks})
     }
 
     const resetThrottle = () => {
       throttle = undefined
     }
+    
+
+    const handleClicks = (n) => {
+      nClicks = n
+      resetThrottle()
+      console.log(n)
+      switch (nClicks) {
+        case cleanSelection: {
+          clearGraphSelection()
+          break;
+        }
+      }      
+    }
+
     return {
       CHART,
       resetThrottle,
@@ -387,7 +407,8 @@ export default defineComponent({
       options,
       elevationData,
       graphHeight,
-      segmentIsSelected
+      segmentIsSelected,
+      handleClicks
     }
   }
 })

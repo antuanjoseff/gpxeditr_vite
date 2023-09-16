@@ -115,6 +115,7 @@
               height="250"
               @overLineChart="overGraphic"
               @dragOnGraph="dragOnGraph"
+              @pointerClicked="pointerClicked"
             ></line-chart>
             <div v-if="profileIsVisible" id="tooltip-footer"></div>
           </q-card-section>
@@ -133,10 +134,11 @@ export default defineComponent({
   emits: [
     'selected-segment-create-track',
     'clear-box',
-    'over-graphic',
+    'overGraphic',
     'dragOnGraph',
     'fillTimeGap',
-    'cancelTrackProfile'
+    'cancelTrackProfile',
+    'pointerClicked'
   ],
   components: { LineChart },
   setup(props, context){
@@ -175,7 +177,7 @@ export default defineComponent({
     }
 
     const overGraphic = (data) => {
-      context.emit('over-graphic', data)
+      context.emit('overGraphic', data)
     }
 
     const updateTolerance = (val) => {
@@ -213,6 +215,10 @@ export default defineComponent({
       }
     }
 
+    const pointerClicked = (param) => {
+      context.emit('pointerClicked', param)
+    }
+
     return {
       info,
       profileIsVisible,
@@ -232,7 +238,8 @@ export default defineComponent({
       createTrack,
       activeTool,
       trackSegmentIsSelected,
-      seamless: true
+      seamless: true,
+      pointerClicked
     }
   }
 })

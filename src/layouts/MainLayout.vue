@@ -160,7 +160,6 @@
           @finishDrag="finishDrag"
           @downloadTrack="downloadTrack"
           @selectedSegmentCreateTrack="selectedSegmentCreateTrack"
-          @overGraphic="overGraphic"
           @trackProfile="trackProfile"
           @clickWaypoint="clickWaypoint"
           @deleteWaypoint="deleteWaypoint"
@@ -179,6 +178,7 @@
           <map-page
             ref="MAP"
             @trackNameChanged="trackNameChanged"
+            @nodesInfoPointerDown="nodesInfoPointerDown"
           />
         </div>
         <div>
@@ -190,6 +190,7 @@
             @dragOnGraph="dragOnGraph"
             @fillTimeGaps="fillTimeGaps"
             @cancelTrackProfile="cancelTrackProfile"
+            @pointerClicked="lineChartPointerClicked"
           />
         </div>
       </div>
@@ -209,6 +210,7 @@ import ModalTrackInfo from 'src/components/ModalTrackInfo.vue'
 
 export default defineComponent({
   name: 'MainLayout',
+  emits: ['nodesInfoPointerDown'],
   components: {
     GpxList, MapPage,
     ModalTrackInfo
@@ -431,6 +433,14 @@ export default defineComponent({
       GPX.value.inputLoseFocus()
     }
   
+    const lineChartPointerClicked = (param) => {
+      MAP.value.tools.info.setNClicks(param.counter)
+    }
+  
+    const nodesInfoPointerDown = (param) => {
+      GRAPH.value.LINECHART.handleClicks(param.counter)
+    }
+  
     return {
       GRAPH,
       clickWaypoint,
@@ -474,7 +484,9 @@ export default defineComponent({
       editTrackTimestamp,
       editTrackName,
       trackNameChanged,
-      GPX
+      GPX,
+      lineChartPointerClicked,
+      nodesInfoPointerDown
     }
   }
 })
