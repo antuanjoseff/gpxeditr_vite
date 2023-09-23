@@ -120,6 +120,7 @@ export class TrackCutter {
     
     this.callback(
       this.selectedLayerId,
+      this.headCoords,
       this.tailCoords,
       'cut'
     )

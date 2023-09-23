@@ -29,6 +29,7 @@ export class TrackJoin {
     this.finishBindId = undefined
     this.color = undefined
     this.width = undefined
+    this.steps = []
 
     this.selectStyle = new Style({
       stroke: new Stroke({
@@ -37,11 +38,11 @@ export class TrackJoin {
       })
     })
     // NEW LAYER TO PUT NEW TRACK SEGMENT
-    this.joinSource = new VectorSource({
+    this.attachmentSource = new VectorSource({
       features: []
     })
 
-    this.joinLayer = new VectorLayer({
+    this.unionLayer = new VectorLayer({
       id: 'joined',
       source: new VectorSource({
         features: [
@@ -78,9 +79,10 @@ export class TrackJoin {
     this.finishBindId = undefined
     this.color = undefined
     this.width = undefined
+    this.width = []
 
-    this.joinLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(this.originCoords)
-    this.map.removeLayer(this.joinLayer)
+    this.unionLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(this.originCoords)
+    this.map.removeLayer(this.unionLayer)
   }
 
   getLinestringFromLayer() {
@@ -94,7 +96,7 @@ export class TrackJoin {
   activate() {
     var _this = this
     this.active = true
-    this.map.addLayer(this.joinLayer)
+    this.map.addLayer(this.unionLayer)
     this.hoverBindId = this.map.on('pointermove', this.moveOverFirstLayer.bind(this))
     this.clickBindId = this.map.on('click', this.clickOnFirstLayer.bind(this))
     this.finishBindId = this.map.on('dblclick', this.finish.bind(this))
@@ -105,17 +107,20 @@ export class TrackJoin {
       // If first selected layer
       if (!this.selectedLayersId.length) {
         this.originCoords = this.getLinestringFromLayer(this.selectedLayer).getGeometry().getCoordinates()
-        this.joinLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(this.originCoords)
-        this.applySelectedStyle(this.joinLayer)
-        const start = this.originCoords[0]
-        const end = this.originCoords[this.originCoords.length - 1]
+        this.unionLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(this.originCoords)
+        this.applySelectedStyle(this.unionLayer)
+  
         this.selectedLayer.setStyle(new Style({
           stroke: new Stroke({
             color: this.color,
             width: this.width
           })
         }))
-        this.joinSource.addFeatures([
+
+        const start = this.originCoords[0]
+        const end = this.originCoords[this.originCoords.length - 1]
+
+        this.attachmentSource.addFeatures([
           new Feature({
             type: 'start',
             geometry: new Point(start)
@@ -125,12 +130,12 @@ export class TrackJoin {
             geometry: new Point(end)
           })
         ])
-        this.map.removeLayer(this.joinLayer)
-        this.map.addLayer(this.joinLayer)
+        this.map.removeLayer(this.unionLayer)
+        this.map.addLayer(this.unionLayer)
         unByKey(this.hoverBindId)
         this.hoverBindId = this.map.on('pointermove', this.moveOverNextLayer.bind(this))
       } else {
-          this.originCoords = this.joinLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+          this.originCoords = this.unionLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
       }
       this.selectedLayersId.push(this.selectedLayer.get('parentId'))
     }
@@ -170,7 +175,7 @@ export class TrackJoin {
     var _this = this
     var concatCoords
     var mouseCoord = this.map.getCoordinateFromPixel(e.pixel)
-    var snapped = this.joinSource.getClosestFeatureToCoordinate(mouseCoord)
+    var snapped = this.attachmentSource.getClosestFeatureToCoordinate(mouseCoord)
     var joinPoint = snapped.get('type')
 
   var hit = this.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
@@ -190,18 +195,33 @@ export class TrackJoin {
       return l.get('type') !== 'joined' && l.get('type') === 'track'}
     })
     if (hit) {
-        this.joinLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(concatCoords)
+        this.unionLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(concatCoords)
+        this.steps.push(concatCoords.length)
+        const start = concatCoords[0]
+        const end = concatCoords[concatCoords.length - 1]
+        
+        this.attachmentSource.clear()
+        this.attachmentSource.addFeatures([
+          new Feature({
+            type: 'start',
+            geometry: new Point(start)
+          }),
+          new Feature({
+            type: 'end',
+            geometry: new Point(end)
+          })
+        ])
       this.map.getTargetElement().style.cursor = 'pointer'
     } else {
       this.selectedLayer = undefined
-      this.joinLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(this.originCoords)
+      this.unionLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(this.originCoords)
       this.map.getTargetElement().style.cursor = ''
     }
   }
 
   done() {
     console.log('done')
-    this.originCoords = this.joinLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+    this.originCoords = this.unionLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
   }
 
   applySelectedStyle(layer) {
@@ -225,7 +245,7 @@ export class TrackJoin {
   finish(e) {
     e.stopPropagation()
     var firstLayerSelected = this.selectedLayersId[0]
-    var coords = this.joinLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
+    var coords = this.unionLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
     this.options.callback(firstLayerSelected, coords, 'join' )
 
     this.map.dispatchEvent({

@@ -144,15 +144,13 @@ export const useAppStore = defineStore('app', {
 
     addLayerToTOC (payload ) {
       // Add new array on top of previous ones
-      this.TOCLayers.forEach((l) => {
-          l.active = false
-      })
       this.TOCLayers.unshift(payload)
       this.TOCLayers.forEach((e, i) => {
           e.index = i
+          e.active = false
       })
-      this.TOCLayers[this.TOCLayers.length - 1].active = true
       this.numLayers = this.TOCLayers.length
+      this.setActiveLayerId(payload.id)
     },
   
     setTOCLayerInfo (payload ) {
@@ -279,6 +277,7 @@ export const useAppStore = defineStore('app', {
     },
     
     setActiveLayerTrackInfo (payload) {
+      console.log(payload)
       this.ActiveLayerTrackInfo = payload
     },
     

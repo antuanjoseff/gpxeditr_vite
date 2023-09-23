@@ -433,6 +433,8 @@ export default {
         return {id: f.get('id'), name: f.get('name')}
       })
       wpNames.sort(compare)
+      layerCounter++
+      
       appStore.addLayerToTOC({
         id: layerId,
         name: layerGroup.get('name'),
@@ -704,6 +706,11 @@ export default {
       addNewSegment(fromLayerId, coords, type)
     }
 
+    const addSegmentCuts = async function (groupLayerId, head, tail, type) {
+      addNewSegment(groupLayerId, head, 'head-' + type)
+      addNewSegment(groupLayerId, tail, 'tail-' + type)
+    }
+
     const addNewSegment = async function (groupLayerId, coords, type) {
       let startTime = null, endTime = null
       const groupLayer = findLayer(groupLayerId)
@@ -723,6 +730,7 @@ export default {
       const filename = groupLayer.get('name') + '(' + type + ')'
       const trackinfo = await tools.info.getInfoFromCoords(coords, groupLayerId)
       const layerId = newLayerId()
+      console.log('new layer id ' + layerId)
 
       if (coords[0].length > 3){
         startTime = coords[0][3]
@@ -764,6 +772,7 @@ export default {
 
       appStore.addLayerToTOC({
         id: layerId,
+        active: true,
         name: filename,
         visible: true,
         color: gColors.getColor(),
@@ -776,7 +785,7 @@ export default {
           endTime
         }
       })
-      appStore.setActiveLayerId(layerId)
+      // appStore.setActiveLayerId(layerId)
       map.value.map.addLayer(layerGroup)
     }
 
@@ -815,7 +824,7 @@ export default {
 
     const initTools = function () {
       let cutter = new TrackCutter(map.value.map, {
-        callback: addNewSegment
+        callback: addSegmentCuts
       })
       tools.cutter = cutter
 
@@ -1047,6 +1056,7 @@ export default {
     const openFile = (contents, filename) => {
       // addTrackFromFile(map.value.map, $store, contents, filename)
       trackHandler.add(contents, filename)
+      layerCounter++
     }
 
     const clearWaypointsStyle = (waypoints) => {
