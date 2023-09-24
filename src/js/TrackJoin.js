@@ -1,5 +1,5 @@
 import Feature from 'ol/Feature.js';
-import {Style, Fill, Text, Stroke, RegularShape, Circle} from 'ol/style';
+import {Style, Fill, Stroke, Circle} from 'ol/style';
 import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
 import Point from 'ol/geom/Point.js';
@@ -29,7 +29,10 @@ export class TrackJoin {
     this.finishBindId = undefined
     this.color = undefined
     this.width = undefined
-    this.steps = []
+
+    // Keeps first and last coordinates positions of each union. 
+    // Needed in case a step back (ctrl + z) happens
+    this.joinedTracksCoords = []
 
     this.selectStyle = new Style({
       stroke: new Stroke({
@@ -40,6 +43,18 @@ export class TrackJoin {
     // NEW LAYER TO PUT NEW TRACK SEGMENT
     this.attachmentSource = new VectorSource({
       features: []
+    })
+
+    this.attachmentLayer = new VectorLayer({
+      id: 'attachment',
+      style: new Style({
+        image: new Circle({
+          radius: 20,
+          fill: new Fill({color: 'rgba(0,0,0,1'}),
+          stroke: new Stroke({color: 'rgba(0,0,0,1)', width: 0.1})
+        })
+      }),
+      source: this.attachmentSource
     })
 
     this.unionLayer = new VectorLayer({
@@ -83,6 +98,7 @@ export class TrackJoin {
 
     this.unionLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(this.originCoords)
     this.map.removeLayer(this.unionLayer)
+    this.map.removeLayer(this.attachmentLayer)
   }
 
   getLinestringFromLayer() {
@@ -97,17 +113,25 @@ export class TrackJoin {
     var _this = this
     this.active = true
     this.map.addLayer(this.unionLayer)
+    this.map.addLayer(this.attachmentLayer)
     this.hoverBindId = this.map.on('pointermove', this.moveOverFirstLayer.bind(this))
-    this.clickBindId = this.map.on('click', this.clickOnFirstLayer.bind(this))
+    this.clickBindId = this.map.on('click', this.clickOnLayer.bind(this))
     this.finishBindId = this.map.on('dblclick', this.finish.bind(this))
   }
 
-  clickOnFirstLayer(e) {
+  clickOnLayer(e) {
     if (this.selectedLayer){
+      this.originCoords = this.getLinestringFromLayer(this.selectedLayer).getGeometry().getCoordinates()
+
       // If first selected layer
       if (!this.selectedLayersId.length) {
-        this.originCoords = this.getLinestringFromLayer(this.selectedLayer).getGeometry().getCoordinates()
         this.unionLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(this.originCoords)
+        
+        var lastJoinedCoords = this.joinedTracksCoords[this.joinedTracksCoords.length - 1]
+        this.joinedTracksCoords.push({
+          start: lastJoinedCoords.end + 1,
+          end: this.originCoords.length - 1
+        })
         this.applySelectedStyle(this.unionLayer)
   
         this.selectedLayer.setStyle(new Style({
@@ -117,26 +141,36 @@ export class TrackJoin {
           })
         }))
 
-        const start = this.originCoords[0]
-        const end = this.originCoords[this.originCoords.length - 1]
-
-        this.attachmentSource.addFeatures([
-          new Feature({
-            type: 'start',
-            geometry: new Point(start)
-          }),
-          new Feature({
-            type: 'end',
-            geometry: new Point(end)
-          })
-        ])
         this.map.removeLayer(this.unionLayer)
         this.map.addLayer(this.unionLayer)
         unByKey(this.hoverBindId)
         this.hoverBindId = this.map.on('pointermove', this.moveOverNextLayer.bind(this))
       } else {
           this.originCoords = this.unionLayer.getSource().getFeatures()[0].getGeometry().getCoordinates()
-      }
+          this.joinedTracksCoords.push({
+            start: 0,
+            end: this.originCoords.length - 1
+          })
+        }
+      
+      // New head and tails features for new joins
+      const start = this.originCoords[0]
+      const end = this.originCoords[this.originCoords.length - 1]
+
+      this.attachmentSource.clear()
+      this.attachmentSource.addFeatures([
+        new Feature({
+          type: 'start',
+          geometry: new Point(start)
+        }),
+        new Feature({
+          type: 'end',
+          geometry: new Point(end)
+        })
+      ])
+      this.map.removeLayer(this.attachmentLayer)
+      this.map.addLayer(this.attachmentLayer)
+              
       this.selectedLayersId.push(this.selectedLayer.get('parentId'))
     }
   }
@@ -156,6 +190,12 @@ export class TrackJoin {
     if (hit) {
       this.map.getTargetElement().style.cursor = 'pointer'
       this.applySelectedStyle(this.selectedLayer)
+      this.joinedTracksCoords = [
+        {
+          start: 0,
+          end: this.selectedLayer.getSource().getFeatures()[0].getGeometry().getCoordinates().length - 1
+        }
+      ]
     } else {
       this.map.getTargetElement().style.cursor = ''
       if (this.selectedLayer){
@@ -196,21 +236,22 @@ export class TrackJoin {
     })
     if (hit) {
         this.unionLayer.getSource().getFeatures()[0].getGeometry().setCoordinates(concatCoords)
-        this.steps.push(concatCoords.length)
         const start = concatCoords[0]
         const end = concatCoords[concatCoords.length - 1]
         
-        this.attachmentSource.clear()
-        this.attachmentSource.addFeatures([
-          new Feature({
-            type: 'start',
-            geometry: new Point(start)
-          }),
-          new Feature({
-            type: 'end',
-            geometry: new Point(end)
-          })
-        ])
+        // this.attachmentSource.clear()
+        // this.attachmentSource.addFeatures([
+        //   new Feature({
+        //     type: 'start',
+        //     geometry: new Point(start)
+        //   }),
+        //   new Feature({
+        //     type: 'end',
+        //     geometry: new Point(end)
+        //   })
+        // ])
+        this.map.removeLayer(this.attachmentLayer)
+        this.map.addLayer(this.attachmentLayer)
       this.map.getTargetElement().style.cursor = 'pointer'
     } else {
       this.selectedLayer = undefined
