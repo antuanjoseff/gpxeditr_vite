@@ -44,12 +44,13 @@ export class TrackHandler {
           if (type.indexOf('linestring') > -1) {
             // featureStyle = styleLine(e)
             var counter = 0
-  
+            var ar = filename.split('.')          
+            var name = ar.splice(0, ar.length - 1).join('_')
+
             if (f.getGeometry().getType().toLowerCase() === 'multilinestring') {
               const lns = f.getGeometry().getLineStrings()
-              var name = filename
               lns.forEach((linestring) => {
-                filename = name + '(' + counter++ + ')'                
+                filename = name + '(' + counter++ + ')'
                 _this.prepareTrack(linestring, waypoints, filename )
               })
             }  else {
@@ -79,6 +80,7 @@ export class TrackHandler {
   }
 
   prepareTrack(geom, waypoints, filename) {
+    console.log(filename)
     var vectorSource
     let dist = 0, startTime = null, endTime = null
     let nCoords = 0
@@ -109,6 +111,7 @@ export class TrackHandler {
     }
     
     const info = { dist, startTime, endTime }
+
     var layerGroup = this.newLayerGroup(filename, info, nCoords, vectorSource, waypoints)
     this.map.addLayer(layerGroup)
     this.callback(layerGroup)

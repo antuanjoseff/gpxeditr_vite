@@ -390,6 +390,30 @@ export default {
     function clickOnMap(event) {
       // In case clicked on nogthing
       resetSelected()
+      if (appStore.getActiveTool) return
+      const hit = this.forEachFeatureAtPixel(event.pixel, function (feature, layer) {
+          return {hit: true, layer: layer}
+        }, { hitTolerance: 10 })
+        if (hit.hit) {
+          const layerId = hit.layer.get('parentId')
+          appStore.setActiveLayerId(layerId)
+          this.getTargetElement().style.cursor = 'pointer'
+        } else {
+          this.getTargetElement().style.cursor = ''
+        }      
+    
+    }
+    function moveOnMap(event) {
+       let LAYER
+       const hit = this.forEachFeatureAtPixel(event.pixel, function (feature, layer) {
+          LAYER = layer
+          return true
+        }, { hitTolerance: 10 })
+        if (hit) {
+          this.getTargetElement().style.cursor = 'pointer'
+        } else {
+          this.getTargetElement().style.cursor = ''
+        }      
     }
 
     function getLayerDimensions(layer) {
@@ -397,6 +421,7 @@ export default {
     }
 
     function checkPointerMove(e) {
+      console.log('check pointer move')
       map.value.map.on('pointermove', function (event) {
         const hit = this.forEachFeatureAtPixel(event.pixel, function (feature, layer) {
           return true
@@ -423,7 +448,7 @@ export default {
         }
         return 0;
       }
-
+      
       const layerId = layerGroup.get('id')
       const layer = getLayerFromLayerGroup(layerGroup, 'track')
       map.value.map.getView().fit(layer.getSource().getExtent())
@@ -474,6 +499,7 @@ export default {
       map.value.map.on('moveend', updateViewState)
       // map.value.map.on('pointermove', checkPointerMove)
       map.value.map.on('click', clickOnMap)
+      map.value.map.on('pointermove', moveOnMap)
       map.value.map.on('toolFinished', (event) => {
         // appStore.setActiveLayerId(null)
         deactivateTool(event.toolname)
@@ -740,11 +766,11 @@ export default {
       const layerGroup = new LayerGroup({
         id: layerId,
         name: filename,
-        dist: trackinfo.distance,
+        dist: trackinfo ? trackinfo.distance : '',
         startTime: startTime,
         endTime: endTime,
-        elevation: trackinfo.elevation,
-        time: trackinfo.time,        
+        elevation: trackinfo ? trackinfo.elevation : '',
+        time: trackinfo ? trackinfo.time : '',
         layers: [
           // TRACK
           new VectorLayer({
@@ -780,7 +806,7 @@ export default {
         waypoints: [],
         waypointsVisible: true,
         info: {
-          dist: trackinfo.distance,
+          dist: trackinfo ? trackinfo.distance : '',
           startTime,
           endTime
         }
@@ -1012,8 +1038,12 @@ export default {
     } 
 
     const editTrackName = ({layerId, name}) => {
-      const layer = findLayer(layerId)
+      const group = findLayer(layerId)
+      group.set('name', name)
+      const layer = getLayerFromLayerGroup(group, 'track')
+      console.log(layer.getProperties())
       layer.set('name', name)
+      console.log(layer.getProperties())      
       context.emit('trackNameChanged')
     } 
 
